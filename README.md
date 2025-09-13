@@ -16,6 +16,9 @@ pip install pydantic-settings
 pip install fastapi
 pip install "uvicorn[standard]"
 pip install asyncpg
+pip install "passlib[bcrypt]" 
+pip install "python-jose[cryptography]"
+
 ```
 
 > 🔹 Recomendación: crea un archivo `requirements.txt` para manejar dependencias y facilitar la instalación en otros entornos:
