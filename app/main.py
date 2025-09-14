@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
 from app.api.v1 import routes_auth
 from app.db.init_db import init_db
 from contextlib import asynccontextmanager
@@ -17,6 +18,7 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan
 )
+
 
 @app.get("/")
 def root():
