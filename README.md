@@ -18,6 +18,9 @@ pip install "uvicorn[standard]"
 pip install asyncpg
 pip install "passlib[bcrypt]" 
 pip install "python-jose[cryptography]"
+pip install slowapi
+pip install pydantic[email]
+pip install fastapi-mail
 
 
 ```
