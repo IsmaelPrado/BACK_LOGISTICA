@@ -1,6 +1,10 @@
+from datetime import datetime, timedelta
+import secrets
+from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.exc import IntegrityError
+from app.models.password_resets import PasswordReset
 from app.models.user import Usuario
 from app.core.security import hash_password, verify_password
 from app.schemas.auth import UsuarioRequest
@@ -76,3 +80,65 @@ class UserService:
             select(Usuario).filter(Usuario.correo_electronico == email)
         )
         return result.scalars().first()
+
+    async def get_user_by_username(self, username: str) -> Usuario | None:
+        result = await self.db.execute(
+            select(Usuario).filter(Usuario.nombre_usuario == username)
+        )
+        return result.scalars().first()
+    
+    async def get_user_by_id(self, user_id: int) -> Usuario | None:
+        result = await self.db.execute(
+            select(Usuario).filter(Usuario.id_usuario == user_id)
+        )
+        return result.scalars().first()
+
+    async def create_password_reset(self, user: Usuario, expire_minutes: int = 15) -> PasswordReset | None:
+        """
+        Genera un enlace/token o OTP de recuperación de contraseña.
+        """
+
+        # Limpiar resets previos
+        await self.db.execute(
+            delete(PasswordReset).where(PasswordReset.user_id == user.id_usuario)
+        )
+        
+        # Generar token seguro
+        token = secrets.token_urlsafe(32)
+        expire_time = datetime.utcnow() + timedelta(minutes=expire_minutes)
+
+        reset = PasswordReset(
+            user_id=user.id_usuario,
+            reset_token=token,
+            expires_at=expire_time
+        )
+        self.db.add(reset)
+        await self.db.commit()
+        await self.db.refresh(reset)
+
+        return reset
+
+    async def verify_password_reset(self, token: str) -> PasswordReset | None:
+        result = await self.db.execute(
+            select(PasswordReset).filter(PasswordReset.reset_token == token)
+        )
+        reset: PasswordReset | None = result.scalars().first()
+        if not reset:
+            return None
+        if reset.expires_at < datetime.utcnow():
+            return None
+        return reset
+    
+    async def update_password(self, user: Usuario, new_password: str) -> None:
+         # Validar fuerza de la contraseña
+        pattern = re.compile(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$')
+        if not pattern.match(new_password):
+            raise ValueError(
+                "La contraseña debe contener mayúscula, minúscula, número y carácter especial."
+            )
+        user.contrasena = hash_password(new_password)
+        self.db.add(user)
+        await self.db.commit()
+        await self.db.refresh(user)
+        return user
+        

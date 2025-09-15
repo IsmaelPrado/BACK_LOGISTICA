@@ -43,3 +43,14 @@ class UsuarioResponse(BaseModel):
 # RECUPERAR USUARIO
 class UsernameRecoveryRequest(BaseModel):
     email: EmailStr
+
+# RECUPERAR CONTRASEÑA
+class PasswordRecoveryRequest(BaseModel):
+    username: str
+
+
+class PasswordResetRequest(BaseModel):
+    token: str
+    new_password: Annotated[str, ...]
+    confirm_new_password: str
+
