@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.database import get_db
-from app.schemas.auth import LoginRequest, DefaultResponse, OTPRequest, OTPResponse, UsuarioRequest, UsuarioResponse, UsernameRecoveryRequest
+from app.schemas.auth import LoginRequest, DefaultResponse, OTPRequest, OTPResponse, PasswordRecoveryRequest, PasswordResetRequest, UsuarioRequest, UsuarioResponse, UsernameRecoveryRequest
 from app.services.mail_service import MailService
 from app.services.user_service import UserService
 from app.core.security import create_access_token
@@ -90,7 +90,7 @@ async def register_user(user: UsuarioRequest, db: AsyncSession = Depends(get_db)
 @limiter.limit("3/minute")
 async def recover_user(request: Request, username_recovery_request: UsernameRecoveryRequest, db: AsyncSession = Depends(get_db)):
     user_service = UserService(db)
-    user = await user_service.get_user_by_email(username_recovery_request.email)
+    user: Usuario | None = await user_service.get_user_by_email(username_recovery_request.email)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado")
 
@@ -98,3 +98,47 @@ async def recover_user(request: Request, username_recovery_request: UsernameReco
     await mail_service.send_username_recovery_email(user.correo_electronico, user.nombre_usuario)
 
     return DefaultResponse(detail="Correo de recuperación enviado.")
+
+@router.post("/recover-password", response_model=DefaultResponse)
+@limiter.limit("3/minute")
+async def recover_password(request: Request, password_request: PasswordRecoveryRequest, db: AsyncSession = Depends(get_db)):
+    user_service = UserService(db)
+    user: Usuario | None = await user_service.get_user_by_username(password_request.username)
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    reset = await user_service.create_password_reset(user)
+
+    # Enviar correo
+    mail_service = MailService()
+    reset_link = f"https://cips.com/reset-password?token={reset.reset_token}"
+    await mail_service.send_password_reset_email(user.correo_electronico, reset_link)
+
+    return DefaultResponse(detail="Correo de recuperación enviado.")
+
+@router.post("/reset-password", response_model=DefaultResponse)
+async def reset_password(request: PasswordResetRequest, db: AsyncSession = Depends(get_db)):
+    user_service = UserService(db)
+    
+    reset = await user_service.verify_password_reset(request.token)  
+    if not reset:
+        raise HTTPException(status_code=400, detail="Token inválido o expirado")
+
+    if request.new_password != request.confirm_new_password:
+        raise HTTPException(status_code=400, detail="Las contraseñas no coinciden")
+
+    try:
+        user = await user_service.get_user_by_id(reset.user_id)
+        await user_service.update_password(user, request.new_password)
+    except ValueError as e:
+        logger.warning(f"Error al restablecer la contraseña para usuario {user.nombre_usuario}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+
+    # Borrar el token una vez usado
+    await db.delete(reset)
+    await db.commit()
+
+    return DefaultResponse(detail="Contraseña restablecida correctamente")

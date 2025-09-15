@@ -35,3 +35,12 @@ class MailService:
             subtype=MessageType.html
         )
         await fm.send_message(message, template_name="username_recovery_email.html")
+
+    async def send_password_reset_email(self, email: EmailStr, reset_link: str):
+        message = MessageSchema(
+            subject="Restablecimiento de contraseña",
+            recipients=[email],
+            template_body={"reset_link": reset_link},
+            subtype=MessageType.html
+        )
+        await fm.send_message(message, template_name="password_reset_email.html")
