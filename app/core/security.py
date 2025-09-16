@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+import secrets
 from jose import jwt, JWTError
 from passlib.context import CryptContext
 from app.core.config import settings
@@ -28,4 +29,7 @@ def decode_access_token(token: str) -> Optional[Dict[str, Any]]:
         return payload
     except JWTError:
         return None
+    
+def generate_state():
+    return secrets.token_urlsafe(16)
     
