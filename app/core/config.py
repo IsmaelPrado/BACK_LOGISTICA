@@ -20,6 +20,14 @@ class Settings(BaseSettings):
     OTP_EXPIRE_MINUTES: int
     OTP_LENGTH: int
 
+    # Configuracion OAuth2
+    GOOGLE_CLIENT_ID: str
+    GOOGLE_CLIENT_SECRET: str
+    GOOGLE_REDIRECT_URI: str
+    GOOGLE_AUTH_URI: str
+    GOOGLE_TOKEN_URI: str
+    GOOGLE_USER_INFO_URI: str
+
     class Config:
         env_file = ".env"   # indica de dónde leer variables
 

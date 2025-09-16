@@ -18,6 +18,18 @@ class OTPResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
 
+# Login con Google OAuth
+class GoogleUser(BaseModel):
+    id: str
+    email: EmailStr
+    name: str | None = None
+    picture: str | None = None
+
+class GoogleAuthResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: GoogleUser
+
 
 # REGISTRO USUARIO
 class UsuarioRequest(BaseModel):

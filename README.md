@@ -21,6 +21,7 @@ pip install "python-jose[cryptography]"
 pip install slowapi
 pip install pydantic[email]
 pip install fastapi-mail
+pip install httpx
 
 
 ```

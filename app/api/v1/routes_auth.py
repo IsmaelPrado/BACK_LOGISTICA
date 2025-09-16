@@ -1,11 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.database import get_db
-from app.schemas.auth import LoginRequest, DefaultResponse, OTPRequest, OTPResponse, PasswordRecoveryRequest, PasswordResetRequest, UsuarioRequest, UsuarioResponse, UsernameRecoveryRequest
+from app.schemas.auth import GoogleAuthResponse, GoogleUser, LoginRequest, DefaultResponse, OTPRequest, OTPResponse, PasswordRecoveryRequest, PasswordResetRequest, UsuarioRequest, UsuarioResponse, UsernameRecoveryRequest
+from app.services.google_oauth import GoogleOAuthService
 from app.services.mail_service import MailService
 from app.services.user_service import UserService
-from app.core.security import create_access_token
+from app.core.security import create_access_token, generate_state
 from app.models.user import Usuario
 import logging
 from app.core.limiter import limiter
@@ -16,7 +18,11 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-@router.post("/login", status_code=status.HTTP_200_OK)
+# Servicios
+mail_service = MailService()
+google_oauth_service = GoogleOAuthService()
+
+@router.post("/login", response_model=DefaultResponse, status_code=status.HTTP_200_OK)
 @limiter.limit("5/minute")
 async def login_step1(
     request: Request,
@@ -35,7 +41,6 @@ async def login_step1(
     otp = await otp_service.generate_otp(user.id_usuario)
 
     # Enviar OTP por correo usando el service
-    mail_service = MailService()
     await mail_service.send_otp_email(user.correo_electronico, otp, user.nombre_usuario)
 
 
@@ -67,6 +72,71 @@ async def login_step2(
     return OTPResponse(access_token=access_token)
 
 
+# Login con Google OAuth
+@router.get("/login/google", response_model=DefaultResponse, status_code=status.HTTP_200_OK)
+async def google_login():
+    state = generate_state()
+    login_url = google_oauth_service.get_google_login_url(state=state)
+    response = RedirectResponse(url=login_url)
+    response.set_cookie("oauth_state", value=state, httponly=True)
+    return response
+
+@router.get("/google/callback", response_model=GoogleAuthResponse, status_code=status.HTTP_200_OK)
+async def google_callback(
+    request: Request,
+    code: str | None = None, 
+    state: str | None = None, 
+    error: str | None = None, 
+    db: AsyncSession = Depends(get_db)
+    ):
+    """Google redirige aquí después de login"""
+    state_cookie = request.cookies.get("oauth_state")
+    if state != state_cookie:
+        raise HTTPException(status_code=400, detail="State inválido o sospechoso")
+
+    if error:
+        raise HTTPException(status_code=400, detail=f"Error en login con Google: {error}")
+    if not code:
+        raise HTTPException(status_code=400, detail="No se recibió código de autorización")
+
+    # 1. Intercambiamos code por access_token
+    token_data = await google_oauth_service.exchange_code_for_token(code)
+    access_token = token_data.get("access_token")
+    if not access_token:
+        raise HTTPException(status_code=400, detail="No se pudo obtener access_token de Google")
+
+    # 2. Obtenemos info del usuario
+    user_info = await google_oauth_service.get_user_info(access_token)
+    google_user = GoogleUser(**user_info)
+
+    # 3. Buscar o crear usuario en tu BD
+    result = await db.execute(
+        Usuario.__table__.select().where(Usuario.correo_electronico == google_user.email)
+    )
+    user = result.fetchone()
+
+    if not user:
+        new_user = Usuario(
+            nombre_usuario=google_user.email,
+            correo_electronico=google_user.email,
+            contrasena="",
+            rol="usuario",
+            # contraseña podría ser None porque login es externo
+        )
+        db.add(new_user)
+        await db.commit()
+        await db.refresh(new_user)
+        user = new_user
+
+    # 4. Crear JWT propio de tu sistema
+    jwt_token = create_access_token({"sub": str(user.id_usuario), "rol": user.rol})
+
+    return GoogleAuthResponse(
+        access_token=jwt_token,
+        user=google_user
+    )
+
+
 @router.post("/register", response_model=UsuarioResponse, status_code=status.HTTP_201_CREATED)
 async def register_user(user: UsuarioRequest, db: AsyncSession = Depends(get_db)):
     try:
@@ -94,7 +164,6 @@ async def recover_user(request: Request, username_recovery_request: UsernameReco
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado")
 
-    mail_service = MailService()
     await mail_service.send_username_recovery_email(user.correo_electronico, user.nombre_usuario)
 
     return DefaultResponse(detail="Correo de recuperación enviado.")
@@ -110,7 +179,6 @@ async def recover_password(request: Request, password_request: PasswordRecoveryR
     reset = await user_service.create_password_reset(user)
 
     # Enviar correo
-    mail_service = MailService()
     reset_link = f"https://cips.com/reset-password?token={reset.reset_token}"
     await mail_service.send_password_reset_email(user.correo_electronico, reset_link)
 
