@@ -1,5 +1,6 @@
 from pydantic import BaseModel, EmailStr, field_validator
 from typing import Annotated
+import re
 
 # LOGIN
 class LoginRequest(BaseModel):
@@ -34,10 +35,41 @@ class GoogleAuthResponse(BaseModel):
 # REGISTRO USUARIO
 class UsuarioRequest(BaseModel):
     nombre_usuario: Annotated[str, ...]  # TODO: agregar validaciones si es necesario
-    correo_electronico: EmailStr
+    correo_electronico: str
     contrasena: Annotated[str, ...]
     confirmar_contrasena: str
     rol: str = "usuario"
+    
+    @field_validator("correo_electronico")
+    def validar_email(cls, v):
+        pattern = re.compile(r"^[^@]+@[^@]+\.[^@]+$")
+        if not pattern.match(v):
+            raise ValueError("El correo electrónico no es válido.")
+        return v
+    
+    @field_validator("nombre_usuario")
+    def nombre_no_vacio(cls, v):
+        if not v or not v.strip():
+            raise ValueError("El nombre de usuario no puede estar vacío.")
+        if len(v.strip()) < 3:
+            raise ValueError("El nombre de usuario debe tener al menos 3 caracteres.")
+        return v.strip()
+
+    @field_validator("contrasena")
+    def validar_contrasena(cls, v):
+        import re
+        pattern = re.compile(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$')
+        if not pattern.match(v):
+            raise ValueError(
+                "La contraseña debe contener mayúscula, minúscula, número y carácter especial."
+            )
+        return v
+    
+    @field_validator("rol")
+    def rol_no_vacio(cls, v):
+        if not v or not v.strip():
+            raise ValueError("El rol no puede estar vacío.")
+        return v.strip()
 
     @field_validator("confirmar_contrasena")
     def contrasenas_coinciden(cls, v, values):

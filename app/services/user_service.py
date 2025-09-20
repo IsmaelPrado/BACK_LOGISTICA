@@ -8,6 +8,7 @@ from app.models.password_resets import PasswordReset
 from app.models.user import Usuario
 from app.core.security import hash_password, verify_password
 from app.schemas.auth import UsuarioRequest
+from pydantic import ValidationError
 import re
 
 
@@ -27,42 +28,61 @@ class UserService:
             raise ValueError("Contraseña incorrecta")
         return user
 
-    async def create_user(self, user_data: UsuarioRequest) -> Usuario:
+    # Crear usuario
+    async def create_user(self, user_data_dict: dict) -> Usuario:
+        # 🔹 Validar estructura y EmailStr con Pydantic
+        try:
+            user_data = UsuarioRequest(**user_data_dict)
+        except ValidationError as e:
+            # Capturar específicamente el error de email
+            for err in e.errors():
+                if err['loc'][-1] == 'correo_electronico':
+                    raise ValueError("El correo electrónico no es válido.")
+            # Otros errores de Pydantic
+            raise ValueError("Datos inválidos.")
+
+        # 🔹 Validaciones adicionales ya existentes
+        if not user_data.nombre_usuario or not user_data.nombre_usuario.strip():
+            raise ValueError("El nombre de usuario no puede estar vacío.")
+        if len(user_data.nombre_usuario.strip()) < 3:
+            raise ValueError("El nombre de usuario debe tener al menos 3 caracteres.")
+
+        if not user_data.contrasena or not user_data.confirmar_contrasena:
+            raise ValueError("La contraseña y su confirmación no pueden estar vacías.")
+
+        if not user_data.rol or not user_data.rol.strip():
+            raise ValueError("El rol no puede estar vacío.")
+
         # Validar coincidencia de contraseñas
         if user_data.contrasena != user_data.confirmar_contrasena:
             raise ValueError("Las contraseñas no coinciden.")
 
         # Validar fuerza de la contraseña
-        pattern = re.compile(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$')
-        if not pattern.match(user_data.contrasena):
+        password_pattern = re.compile(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$')
+        if not password_pattern.match(user_data.contrasena):
             raise ValueError(
                 "La contraseña debe contener mayúscula, minúscula, número y carácter especial."
             )
 
-        # Validar correo
-        email_pattern = re.compile(r'^[^@]+@[^@]+\.[^@]+$')
-        if not email_pattern.match(user_data.correo_electronico):
-            raise ValueError("El correo electrónico no es válido.")
-
         # Validar duplicados
         result = await self.db.execute(
-            select(Usuario).filter(Usuario.nombre_usuario == user_data.nombre_usuario)
+            select(Usuario).filter(Usuario.nombre_usuario == user_data.nombre_usuario.strip())
         )
         if result.scalars().first():
             raise ValueError("El nombre de usuario ya está en uso.")
 
         result = await self.db.execute(
-            select(Usuario).filter(Usuario.correo_electronico == user_data.correo_electronico)
+            select(Usuario).filter(Usuario.correo_electronico == user_data.correo_electronico.strip())
         )
         if result.scalars().first():
             raise ValueError("El correo electrónico ya está registrado.")
 
         # Crear usuario
         nuevo = Usuario(
-            nombre_usuario=user_data.nombre_usuario,
-            correo_electronico=user_data.correo_electronico,
+            nombre_usuario=user_data.nombre_usuario.strip(),
+            correo_electronico=user_data.correo_electronico.strip(),
             contrasena=hash_password(user_data.contrasena),
-            rol=user_data.rol
+            rol=user_data.rol.strip()
         )
         self.db.add(nuevo)
 
@@ -74,6 +94,8 @@ class UserService:
 
         await self.db.refresh(nuevo)
         return nuevo
+
+
 
     async def get_user_by_email(self, email: str) -> Usuario | None:
         result = await self.db.execute(
