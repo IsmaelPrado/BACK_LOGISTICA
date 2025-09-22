@@ -1,11 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, Response, status, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.database import get_db
-from app.schemas.auth import GoogleAuthResponse, GoogleUser, LoginRequest, DefaultResponse, OTPRequest, OTPResponse, PasswordRecoveryRequest, PasswordResetRequest, UsuarioRequest, UsuarioResponse, UsernameRecoveryRequest
+from app.schemas.auth import GoogleAuthResponse, GoogleUser, LoginRequest, DefaultResponse, LoginResponse, OTPRequest, OTPResponse, PasswordRecoveryRequest, PasswordResetRequest, UsuarioRequest, UsuarioResponse, UsernameRecoveryRequest
 from app.services.google_oauth import GoogleOAuthService
 from app.services.mail_service import MailService
+from app.services.twofa_service import TwoFAService
 from app.services.user_service import UserService
 from app.core.security import create_access_token, generate_state
 from app.models.user import Usuario
@@ -22,7 +23,8 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 mail_service = MailService()
 google_oauth_service = GoogleOAuthService()
 
-@router.post("/login", response_model=DefaultResponse, status_code=status.HTTP_200_OK)
+
+@router.post("/login", response_model=LoginResponse, status_code=status.HTTP_200_OK)
 @limiter.limit("5/minute")
 async def login_step1(
     request: Request,
@@ -35,19 +37,35 @@ async def login_step1(
     except ValueError as e:
         logger.warning(f"Error de autenticación para usuario {login_request.username}: {e}")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
+    if login_request.login_type == "email":
+           # Generar OTP
+        otp_service = OTPService(db)
+        otp = await otp_service.generate_otp(user.id_usuario)
 
-    # Generar OTP
-    otp_service = OTPService(db)
-    otp = await otp_service.generate_otp(user.id_usuario)
-
-    # Enviar OTP por correo usando el service
-    await mail_service.send_otp_email(user.correo_electronico, otp, user.nombre_usuario)
-
-
-    return DefaultResponse(detail="OTP enviado al correo. Por favor verifica para continuar.")
+        # Enviar OTP por correo usando el service
+        await mail_service.send_otp_email(user.correo_electronico, otp, user.nombre_usuario)
 
 
-@router.post("/login/verify", response_model=OTPResponse, status_code=status.HTTP_200_OK)
+        return LoginResponse(detail="OTP enviado al correo. Por favor verifica para continuar.")
+    elif login_request.login_type == "totp":
+        twofa_service = TwoFAService(db)
+        if not user.secret_2fa:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El usuario no tiene configurado 2FA con Google Authenticator"
+            )
+        qr_base64 = await twofa_service.configurar_2fa_para_usuario(login_request.username)
+        return LoginResponse(
+            detail="Usuario autenticado. Ingresa tu código de Google Authenticator.",
+            qr_base64=qr_base64
+            )
+    else :
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Tipo de login inválido")
+
+ 
+
+
+@router.post("/login-step2-email", response_model=OTPResponse, status_code=status.HTTP_200_OK)
 @limiter.limit("5/minute")
 async def login_step2(
     request: Request,
@@ -72,13 +90,44 @@ async def login_step2(
     return OTPResponse(access_token=access_token)
 
 
+@router.post("/login-step2-totp", response_model=OTPResponse, status_code=status.HTTP_200_OK)
+@limiter.limit("5/minute")
+async def login_step2_totp(
+    request: Request,
+    otp_request: OTPRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(select(Usuario).where(Usuario.nombre_usuario == otp_request.username))
+    user = result.scalars().first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado")
+
+    if not user.secret_2fa:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Usuario no tiene 2FA configurado")
+
+    # Verificar OTP TOTP
+    if not TwoFAService.verificar_codigo(user.secret_2fa, otp_request.otp):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Código inválido o expirado")
+
+    # Generar JWT
+    access_token = create_access_token(data={"sub": user.nombre_usuario, "rol": user.rol})
+    return OTPResponse(access_token=access_token)
+
+
 # Login con Google OAuth
-@router.get("/login/google", response_model=DefaultResponse, status_code=status.HTTP_200_OK)
+@router.get("/login/google")
 async def google_login():
     state = generate_state()
     login_url = google_oauth_service.get_google_login_url(state=state)
+
     response = RedirectResponse(url=login_url)
-    response.set_cookie("oauth_state", value=state, httponly=True)
+    response.set_cookie(
+        key="oauth_state",
+        value=state,
+        httponly=True,
+        samesite="lax",  
+        secure=False      
+    )
     return response
 
 @router.get("/google/callback", response_model=GoogleAuthResponse, status_code=status.HTTP_200_OK)

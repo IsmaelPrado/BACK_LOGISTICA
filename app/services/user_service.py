@@ -10,6 +10,7 @@ from app.core.security import hash_password, verify_password
 from app.schemas.auth import UsuarioRequest
 from pydantic import ValidationError
 import re
+import pyotp
 
 
 class UserService:
@@ -69,11 +70,13 @@ class UserService:
             nombre_usuario=user_data.nombre_usuario.strip(),
             correo_electronico=user_data.correo_electronico.strip(),
             contrasena=hash_password(user_data.contrasena),
-            rol=user_data.rol.strip()
+            rol=user_data.rol.strip(),
+            secret_2fa=pyotp.random_base32()
         )
         self.db.add(nuevo)
 
         try:
+            await self.db.flush()
             await self.db.commit()
         except IntegrityError:
             await self.db.rollback()
@@ -149,4 +152,6 @@ class UserService:
         await self.db.commit()
         await self.db.refresh(user)
         return user
+    
+    
         

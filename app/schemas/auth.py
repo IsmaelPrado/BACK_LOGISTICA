@@ -1,12 +1,32 @@
-from pydantic import BaseModel, EmailStr, field_validator
+from fastapi import HTTPException, status
+from pydantic import BaseModel, EmailStr, field_validator, model_validator
 from typing import Annotated
 import re
+from enum import Enum
 
 # LOGIN
+
+class LoginType(str, Enum):
+    email = "email"
+    totp = "totp"
 class LoginRequest(BaseModel):
     username: Annotated[str, ...]  # TODO: agregar validaciones si es necesario
     password: Annotated[str, ...]
+    login_type: LoginType
 
+    # Validador para traducir mensaje
+    @model_validator(mode="before")
+    def validar_tipo_login(cls, values: dict) -> dict:
+        tipo = values.get("login_type")
+        if tipo not in LoginType._value2member_map_:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="El tipo de login debe ser 'email' o 'totp'"
+            )
+        return values
+class LoginResponse(BaseModel):
+    detail:str
+    qr_base64: str | None = None
 
 class DefaultResponse(BaseModel):
     detail: str
@@ -38,6 +58,7 @@ class UsuarioRequest(BaseModel):
     correo_electronico: str
     contrasena: Annotated[str, ...]
     confirmar_contrasena: str
+    
     rol: str = "usuario"
     
     @field_validator("correo_electronico")
@@ -59,8 +80,8 @@ class UsuarioRequest(BaseModel):
     def validar_contrasena(cls, v):
         import re
         # Validar longitud
-        if len(v) < 8:
-            raise ValueError("La contraseña debe tener al menos 8 caracteres.")
+        if len(v) < 5:
+            raise ValueError("La contraseña debe tener al menos 5 caracteres.")
         if len(v) > 64:
             raise ValueError("La contraseña no puede exceder 64 caracteres.")
         
@@ -73,10 +94,12 @@ class UsuarioRequest(BaseModel):
         return v
     
     @field_validator("rol")
-    def rol_no_vacio(cls, v):
-        if not v or not v.strip():
-            raise ValueError("El rol no puede estar vacío.")
-        return v.strip()
+    def rol_valido(cls, v: str) -> str:
+        v = v.strip().lower()
+        if v not in {"admin", "usuario"}:
+            raise ValueError("El rol solo puede ser 'admin' o 'usuario'.")
+        return v
+
 
     @field_validator("confirmar_contrasena")
     def contrasenas_coinciden(cls, v, values):
@@ -93,7 +116,13 @@ class UsuarioResponse(BaseModel):
 
 # RECUPERAR USUARIO
 class UsernameRecoveryRequest(BaseModel):
-    email: EmailStr
+    email: str
+
+    @field_validator("email")
+    def email_valido(cls, v):
+        if not re.match(r"[^@]+@[^@]+\.[^@]+", v):
+            raise ValueError("El correo electrónico no es válido. Debe tener un formato como 'usuario@dominio.com'.")
+        return v
 
 # RECUPERAR CONTRASEÑA
 class PasswordRecoveryRequest(BaseModel):
