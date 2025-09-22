@@ -79,6 +79,13 @@ class UsuarioRequest(BaseModel):
     @field_validator("contrasena")
     def validar_contrasena(cls, v):
         import re
+        # Validar longitud
+        if len(v) < 5:
+            raise ValueError("La contraseña debe tener al menos 5 caracteres.")
+        if len(v) > 64:
+            raise ValueError("La contraseña no puede exceder 64 caracteres.")
+        
+        # Validar composición
         pattern = re.compile(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$')
         if not pattern.match(v):
             raise ValueError(
@@ -87,10 +94,12 @@ class UsuarioRequest(BaseModel):
         return v
     
     @field_validator("rol")
-    def rol_no_vacio(cls, v):
-        if not v or not v.strip():
-            raise ValueError("El rol no puede estar vacío.")
-        return v.strip()
+    def rol_valido(cls, v: str) -> str:
+        v = v.strip().lower()
+        if v not in {"admin", "usuario"}:
+            raise ValueError("El rol solo puede ser 'admin' o 'usuario'.")
+        return v
+
 
     @field_validator("confirmar_contrasena")
     def contrasenas_coinciden(cls, v, values):
@@ -107,7 +116,13 @@ class UsuarioResponse(BaseModel):
 
 # RECUPERAR USUARIO
 class UsernameRecoveryRequest(BaseModel):
-    email: EmailStr
+    email: str
+
+    @field_validator("email")
+    def email_valido(cls, v):
+        if not re.match(r"[^@]+@[^@]+\.[^@]+", v):
+            raise ValueError("El correo electrónico no es válido. Debe tener un formato como 'usuario@dominio.com'.")
+        return v
 
 # RECUPERAR CONTRASEÑA
 class PasswordRecoveryRequest(BaseModel):
