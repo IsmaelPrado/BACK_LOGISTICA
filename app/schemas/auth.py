@@ -58,6 +58,13 @@ class UsuarioRequest(BaseModel):
     @field_validator("contrasena")
     def validar_contrasena(cls, v):
         import re
+        # Validar longitud
+        if len(v) < 8:
+            raise ValueError("La contraseña debe tener al menos 8 caracteres.")
+        if len(v) > 64:
+            raise ValueError("La contraseña no puede exceder 64 caracteres.")
+        
+        # Validar composición
         pattern = re.compile(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$')
         if not pattern.match(v):
             raise ValueError(

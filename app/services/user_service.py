@@ -29,19 +29,8 @@ class UserService:
         return user
 
     # Crear usuario
-    async def create_user(self, user_data_dict: dict) -> Usuario:
-        # 🔹 Validar estructura y EmailStr con Pydantic
-        try:
-            user_data = UsuarioRequest(**user_data_dict)
-        except ValidationError as e:
-            # Capturar específicamente el error de email
-            for err in e.errors():
-                if err['loc'][-1] == 'correo_electronico':
-                    raise ValueError("El correo electrónico no es válido.")
-            # Otros errores de Pydantic
-            raise ValueError("Datos inválidos.")
-
-        # 🔹 Validaciones adicionales ya existentes
+    async def create_user(self, user_data: UsuarioRequest) -> Usuario:
+        # 🔹 Validaciones adicionales (no necesitas reconstruir el modelo)
         if not user_data.nombre_usuario or not user_data.nombre_usuario.strip():
             raise ValueError("El nombre de usuario no puede estar vacío.")
         if len(user_data.nombre_usuario.strip()) < 3:
@@ -60,9 +49,7 @@ class UserService:
         # Validar fuerza de la contraseña
         password_pattern = re.compile(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$')
         if not password_pattern.match(user_data.contrasena):
-            raise ValueError(
-                "La contraseña debe contener mayúscula, minúscula, número y carácter especial."
-            )
+            raise ValueError("La contraseña debe contener mayúscula, minúscula, número y carácter especial.")
 
         # Validar duplicados
         result = await self.db.execute(
@@ -94,7 +81,6 @@ class UserService:
 
         await self.db.refresh(nuevo)
         return nuevo
-
 
 
     async def get_user_by_email(self, email: str) -> Usuario | None:
