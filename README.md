@@ -22,7 +22,9 @@ pip install slowapi
 pip install pydantic[email]
 pip install fastapi-mail
 pip install httpx
-
+pip install pyotp
+pip install qrcode
+pip install "qrcode[pil]"
 
 ```
 

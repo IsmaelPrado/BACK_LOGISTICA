@@ -1,12 +1,32 @@
-from pydantic import BaseModel, EmailStr, field_validator
+from fastapi import HTTPException, status
+from pydantic import BaseModel, EmailStr, field_validator, model_validator
 from typing import Annotated
 import re
+from enum import Enum
 
 # LOGIN
+
+class LoginType(str, Enum):
+    email = "email"
+    totp = "totp"
 class LoginRequest(BaseModel):
     username: Annotated[str, ...]  # TODO: agregar validaciones si es necesario
     password: Annotated[str, ...]
+    login_type: LoginType
 
+    # Validador para traducir mensaje
+    @model_validator(mode="before")
+    def validar_tipo_login(cls, values: dict) -> dict:
+        tipo = values.get("login_type")
+        if tipo not in LoginType._value2member_map_:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="El tipo de login debe ser 'email' o 'totp'"
+            )
+        return values
+class LoginResponse(BaseModel):
+    detail:str
+    qr_base64: str | None = None
 
 class DefaultResponse(BaseModel):
     detail: str
@@ -38,6 +58,7 @@ class UsuarioRequest(BaseModel):
     correo_electronico: str
     contrasena: Annotated[str, ...]
     confirmar_contrasena: str
+    
     rol: str = "usuario"
     
     @field_validator("correo_electronico")

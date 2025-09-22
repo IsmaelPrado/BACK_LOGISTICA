@@ -10,6 +10,7 @@ from app.core.security import hash_password, verify_password
 from app.schemas.auth import UsuarioRequest
 from pydantic import ValidationError
 import re
+import pyotp
 
 
 class UserService:
@@ -29,17 +30,20 @@ class UserService:
         return user
 
     # Crear usuario
-    async def create_user(self, user_data_dict: dict) -> Usuario:
-        # 🔹 Validar estructura y EmailStr con Pydantic
-        try:
-            user_data = UsuarioRequest(**user_data_dict)
-        except ValidationError as e:
-            # Capturar específicamente el error de email
-            for err in e.errors():
-                if err['loc'][-1] == 'correo_electronico':
-                    raise ValueError("El correo electrónico no es válido.")
-            # Otros errores de Pydantic
-            raise ValueError("Datos inválidos.")
+    async def create_user(self, user_data_input: "UsuarioRequest | dict") -> Usuario:
+        # 🔹 Convertir dict a UsuarioRequest si es necesario
+        if isinstance(user_data_input, dict):
+            try:
+                user_data = UsuarioRequest(**user_data_input)
+            except ValidationError as e:
+                for err in e.errors():
+                    if err['loc'][-1] == 'correo_electronico':
+                        raise ValueError("El correo electrónico no es válido.")
+                raise ValueError("Datos inválidos.")
+        elif isinstance(user_data_input, UsuarioRequest):
+            user_data = user_data_input
+        else:
+            raise TypeError("Se esperaba dict o UsuarioRequest")
 
         # 🔹 Validaciones adicionales ya existentes
         if not user_data.nombre_usuario or not user_data.nombre_usuario.strip():
@@ -82,11 +86,13 @@ class UserService:
             nombre_usuario=user_data.nombre_usuario.strip(),
             correo_electronico=user_data.correo_electronico.strip(),
             contrasena=hash_password(user_data.contrasena),
-            rol=user_data.rol.strip()
+            rol=user_data.rol.strip(),
+            secret_2fa=pyotp.random_base32()
         )
         self.db.add(nuevo)
 
         try:
+            await self.db.flush()
             await self.db.commit()
         except IntegrityError:
             await self.db.rollback()
@@ -163,4 +169,6 @@ class UserService:
         await self.db.commit()
         await self.db.refresh(user)
         return user
+    
+    
         
