@@ -28,6 +28,10 @@ class Settings(BaseSettings):
     GOOGLE_TOKEN_URI: str
     GOOGLE_USER_INFO_URI: str
 
+    # Configuración de geolocalización con Google
+    GOOGLE_GEO_URL: str
+    GOOGLE_GEO_API_KEY: str
+
     class Config:
         env_file = ".env"   # indica de dónde leer variables
 

@@ -28,6 +28,14 @@ class UserService:
         if not verify_password(password, user.contrasena):
             raise ValueError("Contraseña incorrecta")
         return user
+    
+    # async def update_geolocation(self, user: Usuario, lat: float | None, lon: float | None) -> None:
+    #     """Guarda latitud y longitud en el usuario si existen valores"""
+    #     if lat is not None and lon is not None:
+    #         user.latitud = lat
+    #         user.longitud = lon
+    #         self.db.add(user)
+    #         await self.db.commit()
 
     # Crear usuario
     async def create_user(self, user_data: UsuarioRequest) -> Usuario:

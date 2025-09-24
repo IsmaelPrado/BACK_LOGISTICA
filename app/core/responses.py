@@ -1,4 +1,8 @@
+from typing import Generic, TypeVar, Optional
+from pydantic import BaseModel
 from enum import Enum
+
+T = TypeVar("T")
 
 class ResponseCode(Enum):
     SUCCESS = (0, "Success")
@@ -20,5 +24,13 @@ class ResponseCode(Enum):
     UNKNOWN_ERROR = (999, "Unknown error")
 
     def __init__(self, code: int, message: str):
-        self.code = code
-        self.message = message
+        self._code = code
+        self._message = message
+
+    @property
+    def code(self) -> int:
+        return self._code
+
+    @property
+    def message(self) -> str:
+        return self._message
