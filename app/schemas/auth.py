@@ -1,8 +1,10 @@
+from datetime import datetime
 from fastapi import HTTPException, status
 from pydantic import BaseModel, EmailStr, field_validator, model_validator
-from typing import Annotated
+from typing import Annotated, Optional
 import re
 from enum import Enum
+from app.validators.common_validators import validar_email, validar_correo_electronico
 
 # LOGIN
 
@@ -25,7 +27,6 @@ class LoginRequest(BaseModel):
             )
         return values
 class LoginResponse(BaseModel):
-    detail:str
     qr_base64: str | None = None
 
 class DefaultResponse(BaseModel):
@@ -35,9 +36,13 @@ class OTPRequest(BaseModel):
     username: str
     otp: str
 
-class OTPResponse(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
+
+class SessionResponse(BaseModel):
+    session_id: int
+    fecha_inicio: datetime
+    estado: str
+    latitud: Optional[float] = None
+    longitud: Optional[float] = None
 
 # Login con Google OAuth
 class GoogleUser(BaseModel):
@@ -61,12 +66,7 @@ class UsuarioRequest(BaseModel):
     
     rol: str = "usuario"
     
-    @field_validator("correo_electronico")
-    def validar_email(cls, v):
-        pattern = re.compile(r"^[^@]+@[^@]+\.[^@]+$")
-        if not pattern.match(v):
-            raise ValueError("El correo electrónico no es válido.")
-        return v
+    _validar_email = validar_correo_electronico()
     
     @field_validator("nombre_usuario")
     def nombre_no_vacio(cls, v):
@@ -118,11 +118,7 @@ class UsuarioResponse(BaseModel):
 class UsernameRecoveryRequest(BaseModel):
     email: str
 
-    @field_validator("email")
-    def email_valido(cls, v):
-        if not re.match(r"[^@]+@[^@]+\.[^@]+", v):
-            raise ValueError("El correo electrónico no es válido. Debe tener un formato como 'usuario@dominio.com'.")
-        return v
+    _validar_email = validar_email()
 
 # RECUPERAR CONTRASEÑA
 class PasswordRecoveryRequest(BaseModel):
@@ -134,3 +130,6 @@ class PasswordResetRequest(BaseModel):
     new_password: Annotated[str, ...]
     confirm_new_password: str
 
+class TokenData(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
