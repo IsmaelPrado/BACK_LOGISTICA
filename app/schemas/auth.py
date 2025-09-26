@@ -40,9 +40,10 @@ class OTPRequest(BaseModel):
 class SessionResponse(BaseModel):
     session_id: int
     fecha_inicio: datetime
-    estado: str
+    estado: bool
     latitud: Optional[float] = None
     longitud: Optional[float] = None
+    tiempo_restante: Optional[int] = None
 
 # Login con Google OAuth
 class GoogleUser(BaseModel):
