@@ -306,11 +306,12 @@ async def register_user(user: UsuarioRequest, db: AsyncSession = Depends(get_db)
     except ValueError as e:
         logger.warning(f"Error al registrar usuario {user.nombre_usuario}: {e}")
         return APIResponse.from_enum(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            ResponseCode.BAD_REQUEST,
             detail=str(e)
         )
 
     return APIResponse(
+        ResponseCode.SUCCESS,
         detail="Usuario registrado correctamente",
         result=UsuarioResponse(
             id_usuario=nuevo.id_usuario,
