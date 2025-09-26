@@ -310,10 +310,10 @@ async def register_user(user: UsuarioRequest, db: AsyncSession = Depends(get_db)
             detail=str(e)
         )
 
-    return APIResponse(
+    return APIResponse.from_enum(
         ResponseCode.SUCCESS,
         detail="Usuario registrado correctamente",
-        result=UsuarioResponse(
+        data=UsuarioResponse(
             id_usuario=nuevo.id_usuario,
             nombre_usuario=nuevo.nombre_usuario,
             correo_electronico=nuevo.correo_electronico,
