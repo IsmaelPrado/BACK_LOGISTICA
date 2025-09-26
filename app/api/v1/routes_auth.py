@@ -29,21 +29,6 @@ mail_service = MailService()
 google_oauth_service = GoogleOAuthService()
 
 
-# @router.post("/token", response_model=APIResponse[TokenData])
-# async def login(form_data: LoginRequest, db: AsyncSession = Depends(get_db)):
-#     user_service = UserService(db)
-#     user = await user_service.authenticate_user(form_data.username, form_data.password)
-#     if not user:
-#         return APIResponse.from_enum(ResponseCode.AUTHENTICATION_FAILED, detail="Usuario o contraseña incorrecta")
-    
-#     token = SessionService.create_jwt(user.id_usuario)
-    
-#     return APIResponse.from_enum(
-#         ResponseCode.SUCCESS,
-#         data=TokenData(access_token=token, token_type="bearer"),
-#         detail="Login exitoso"
-#     )
-
 # @router.get("/me", response_model=APIResponse)
 # async def me(current_user = Depends(get_current_user)):
 #     return APIResponse.from_enum(ResponseCode.SUCCESS, data={"username": current_user.nombre_usuario, "email": current_user.correo_electronico})
@@ -130,21 +115,36 @@ async def login_step2(
     session_service = SessionService(db)
     client_ip = request.client.host
     lat, lon = await GeoService.get_geolocation_from_ip(client_ip)
-    nueva_sesion = await session_service.crear_sesion(
+    sesion, nueva, tiempo_restante = await session_service.crear_o_actualizar_sesion(
         id_usuario=user.id_usuario,
         latitud=lat,
         longitud=lon
     )
 
+    if not nueva:
+        return APIResponse.from_enum(
+            ResponseCode.SUCCESS,
+            detail="El usuario ya tiene una sesión activa.",
+            data=SessionResponse(
+                session_id=sesion.id,
+                fecha_inicio=sesion.fecha_inicio,
+                estado=sesion.estado,
+                latitud=sesion.latitud,
+                longitud=sesion.longitud,
+                tiempo_restante=tiempo_restante
+            )
+        )
+
     return APIResponse.from_enum(
         ResponseCode.SUCCESS,
         detail="Usuario autenticado. Sesión creada correctamente.",
         data=SessionResponse(
-            session_id=nueva_sesion.id,
-            fecha_inicio=nueva_sesion.fecha_inicio,
-            estado=nueva_sesion.estado,
-            latitud=nueva_sesion.latitud,
-            longitud=nueva_sesion.longitud
+            session_id=sesion.id,
+            fecha_inicio=sesion.fecha_inicio,
+            estado=sesion.estado,
+            latitud=sesion.latitud,
+            longitud=sesion.longitud,
+            tiempo_restante=None
         )
     )
 
@@ -174,21 +174,36 @@ async def login_step2_totp(
     session_service = SessionService(db)
     client_ip = request.client.host
     lat, lon = await GeoService.get_geolocation_from_ip(client_ip)
-    nueva_sesion = await session_service.crear_sesion(
+    sesion, nueva, tiempo_restante = await session_service.crear_o_actualizar_sesion(
         id_usuario=user.id_usuario,
         latitud=lat,
         longitud=lon
     )
 
+    if not nueva:
+        return APIResponse.from_enum(
+            ResponseCode.SUCCESS,
+            detail="El usuario ya tiene una sesión activa.",
+            data=SessionResponse(
+                session_id=sesion.id,
+                fecha_inicio=sesion.fecha_inicio,
+                estado=sesion.estado,
+                latitud=sesion.latitud,
+                longitud=sesion.longitud,
+                tiempo_restante=tiempo_restante
+            )
+        )
+
     return APIResponse.from_enum(
         ResponseCode.SUCCESS,
         detail="Usuario autenticado. Sesión creada correctamente.",
         data=SessionResponse(
-            session_id=nueva_sesion.id,
-            fecha_inicio=nueva_sesion.fecha_inicio,
-            estado=nueva_sesion.estado,
-            latitud=nueva_sesion.latitud,
-            longitud=nueva_sesion.longitud
+            session_id=sesion.id,
+            fecha_inicio=sesion.fecha_inicio,
+            estado=sesion.estado,
+            latitud=sesion.latitud,
+            longitud=sesion.longitud,
+            tiempo_restante=tiempo_restante
         )
     )
 

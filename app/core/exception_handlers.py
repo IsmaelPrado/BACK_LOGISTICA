@@ -19,7 +19,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     # Si el error viene por JSON mal formado
     if "JSON decode error" in str(exc):
         return JSONResponse(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_200_OK,
             content=APIResponse.from_enum(
                 ResponseCode.VALIDATION_ERROR,
                 detail="El cuerpo enviado no es un JSON válido"
@@ -38,7 +38,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
     # ✅ Retornar siempre APIResponse
     return JSONResponse(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        status_code=status.HTTP_200_OK,
         content=APIResponse.from_enum(
             ResponseCode.VALIDATION_ERROR,
             detail=first_error
@@ -48,7 +48,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
     custom_message = "Has superado el límite de intentos. Intenta nuevamente más tarde."
     return JSONResponse(
-        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        status_code=status.HTTP_200_OK,
         content=APIResponse.from_enum(
             ResponseCode.RATE_LIMIT_EXCEEDED,
             detail=custom_message
