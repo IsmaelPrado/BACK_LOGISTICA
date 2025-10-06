@@ -1,5 +1,7 @@
 from sqlalchemy import Column, Integer, String, DateTime, func, Numeric
+from sqlalchemy.orm import relationship
 from app.db.database import Base
+from app.models.associations.usuario_permisos import usuario_permisos
 
 class Usuario(Base):
     __tablename__ = "usuarios"
@@ -11,4 +13,10 @@ class Usuario(Base):
     rol = Column(String(20), nullable=False, server_default="usuario")
     secret_2fa = Column(String(64), nullable = True)
     fecha_creacion = Column(DateTime, server_default=func.now(), nullable=False)
+
+    permisos = relationship(
+        "Permiso",
+        secondary=usuario_permisos,
+        back_populates="usuarios"
+    )
 

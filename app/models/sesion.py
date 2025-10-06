@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, Numeric, DateTime, Interval, Boolean, ForeignKey, func, text
+from sqlalchemy import Column, Integer, Numeric, DateTime, Interval, Boolean, ForeignKey, String, func, text
 from app.db.database import Base
 
 class Sesion(Base):
@@ -26,3 +26,4 @@ class Sesion(Base):
     estado = Column(Boolean, nullable=False, server_default=text("TRUE"))
     latitud = Column(Numeric(9, 6), nullable=True)
     longitud = Column(Numeric(9, 6), nullable=True)
+    token = Column(String, unique=True, nullable=False, index=True)

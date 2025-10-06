@@ -4,7 +4,7 @@ from pydantic import BaseModel, EmailStr, field_validator, model_validator
 from typing import Annotated, Optional
 import re
 from enum import Enum
-from app.validators.common_validators import validar_email, validar_correo_electronico
+from app.validators.common_validators import validar_email, validar_correo_electronico, validar_no_vacio
 
 # LOGIN
 
@@ -12,29 +12,29 @@ class LoginType(str, Enum):
     email = "email"
     totp = "totp"
 class LoginRequest(BaseModel):
-    username: Annotated[str, ...]  # TODO: agregar validaciones si es necesario
+    username: Annotated[str, ...]  
     password: Annotated[str, ...]
     login_type: LoginType
+
+    _validar_username = validar_no_vacio("username")
+    _validar_password = validar_no_vacio("password")
 
     # Validador para traducir mensaje
     @model_validator(mode="before")
     def validar_tipo_login(cls, values: dict) -> dict:
         tipo = values.get("login_type")
         if tipo not in LoginType._value2member_map_:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="El tipo de login debe ser 'email' o 'totp'"
-            )
+            raise ValueError("El tipo de login debe ser 'email' o 'totp'")
         return values
 class LoginResponse(BaseModel):
     qr_base64: str | None = None
 
-class DefaultResponse(BaseModel):
-    detail: str
-
 class OTPRequest(BaseModel):
     username: str
     otp: str
+
+    _validar_otp = validar_no_vacio("otp")
+    _validar_username = validar_no_vacio("username")
 
 
 class SessionResponse(BaseModel):
@@ -44,6 +44,7 @@ class SessionResponse(BaseModel):
     latitud: Optional[float] = None
     longitud: Optional[float] = None
     tiempo_restante: Optional[int] = None
+    token: str
 
 # Login con Google OAuth
 class GoogleUser(BaseModel):
@@ -60,7 +61,7 @@ class GoogleAuthResponse(BaseModel):
 
 # REGISTRO USUARIO
 class UsuarioRequest(BaseModel):
-    nombre_usuario: Annotated[str, ...]  # TODO: agregar validaciones si es necesario
+    nombre_usuario: Annotated[str, ...]
     correo_electronico: str
     contrasena: Annotated[str, ...]
     confirmar_contrasena: str
@@ -125,12 +126,14 @@ class UsernameRecoveryRequest(BaseModel):
 class PasswordRecoveryRequest(BaseModel):
     username: str
 
+    _validar_username = validar_no_vacio("username")
+
 
 class PasswordResetRequest(BaseModel):
     token: str
     new_password: Annotated[str, ...]
     confirm_new_password: str
 
-class TokenData(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
+    _token = validar_no_vacio("token")
+    _validar_new_password = validar_no_vacio("new_password")
+    _validar_confirm_new_password = validar_no_vacio("confirm_new_password")

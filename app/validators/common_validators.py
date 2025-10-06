@@ -20,3 +20,11 @@ def validar_email():
         return v
     return _validador
 
+def validar_no_vacio(campo: str):
+    @field_validator(campo)
+    def _validador(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError(f"El campo '{campo}' no puede estar vacío.")
+        return v.strip()
+    return _validador
+

@@ -4,6 +4,8 @@ from sqlalchemy import select, update
 from app.models.sesion import Sesion
 from datetime import datetime, timedelta
 
+from app.core.security import create_session_token
+
 class SessionService:
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -32,8 +34,11 @@ class SessionService:
             if sesion_existente.estado and ahora <= expiracion:
                 # 🔄 Sesión activa: actualizar última actividad (resetea el tiempo de expiración)
                 sesion_existente.ultima_actividad = ahora
-                sesion_existente.latitud = latitud
-                sesion_existente.longitud = longitud
+                if latitud is not None and latitud != "":
+                    sesion_existente.latitud = latitud
+
+                if longitud is not None and longitud != "":
+                    sesion_existente.longitud = longitud
 
                 self.db.add(sesion_existente)
                 await self.db.commit()
@@ -48,8 +53,14 @@ class SessionService:
             sesion_existente.fecha_inicio = ahora
             sesion_existente.ultima_actividad = ahora
             sesion_existente.estado = True
-            sesion_existente.latitud = latitud
-            sesion_existente.longitud = longitud
+
+            if latitud is not None and latitud != "":
+                sesion_existente.latitud = latitud
+
+            if longitud is not None and longitud != "":
+                sesion_existente.longitud = longitud
+
+            sesion_existente.token = create_session_token()
 
             self.db.add(sesion_existente)
             await self.db.commit()
@@ -65,7 +76,8 @@ class SessionService:
             ultima_actividad=ahora,
             estado=True,
             latitud=latitud,
-            longitud=longitud
+            longitud=longitud,
+            token=create_session_token()
         )
         self.db.add(nueva_sesion)
         await self.db.commit()
@@ -76,13 +88,13 @@ class SessionService:
 
 
 
-    async def validar_sesion(self, id_sesion: int) -> bool:
-        """Valida si la sesión sigue activa y no ha expirado por inactividad"""
+    async def validar_sesion(self, token_sesion: str) -> bool:
+        """Valida si la sesión sigue activa y no ha expirado por inactividad usando el token de sesión"""
         result = await self.db.execute(
-            select(Sesion).where(Sesion.id == id_sesion)
+            select(Sesion).where(Sesion.token == token_sesion)
         )
         sesion = result.scalars().first()
-        if not sesion or sesion.estado != True:
+        if not sesion or sesion.estado is not True:
             return False
 
         # Verificar inactividad
@@ -96,9 +108,9 @@ class SessionService:
         await self.db.commit()
         return True
 
-    async def cerrar_sesion(self, id_sesion: int):
+    async def cerrar_sesion(self, token_sesion: str):
         result = await self.db.execute(
-            select(Sesion).where(Sesion.id == id_sesion)
+            select(Sesion).where(Sesion.token == token_sesion)
         )
         sesion = result.scalars().first()
         if sesion:
