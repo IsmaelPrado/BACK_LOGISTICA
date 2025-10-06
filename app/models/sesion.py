@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, Numeric, DateTime, Interval, String, ForeignKey, func, text
+from sqlalchemy import Column, Integer, Numeric, DateTime, Interval, Boolean, ForeignKey, String, func, text
 from app.db.database import Base
 
 class Sesion(Base):
@@ -20,9 +20,10 @@ class Sesion(Base):
     )
     expiracion_inactividad = Column(
         Interval,
-        server_default=text("INTERVAL '5 minutes'"),
+        server_default=text("INTERVAL '2 minutes'"),
         nullable=False
     )
-    estado = Column(String(20), nullable=False, server_default="activa")
+    estado = Column(Boolean, nullable=False, server_default=text("TRUE"))
     latitud = Column(Numeric(9, 6), nullable=True)
     longitud = Column(Numeric(9, 6), nullable=True)
+    token = Column(String, unique=True, nullable=False, index=True)

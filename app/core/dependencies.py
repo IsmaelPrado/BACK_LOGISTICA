@@ -1,27 +1,46 @@
+from datetime import datetime
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.database import get_db
+from app.models.sesion import Sesion
 from app.models.user import Usuario
 from app.services.user_service import UserService
-from app.core.security import decode_access_token
 from app.core.responses import ResponseCode
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
+# ⚡ Aquí ponemos un tokenUrl dummy para que Swagger muestre el candado
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
-async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)) -> Usuario:
-    user_id = decode_access_token(token)
-    if not user_id:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token inválido o expirado")
-    user_service = UserService(db)
-    user = await user_service.get_user_by_id(user_id)
-    if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado")
-    return user
+async def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db)
+):
+    # Buscar sesión por token
+    result = await db.execute(
+        select(Sesion).where(Sesion.token == token)
+    )
+    sesion = result.scalars().first()
 
-def require_role(role: str):
-    async def role_checker(current_user: Usuario = Depends(get_current_user)):
-        if current_user.rol != role:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acceso denegado")
-        return current_user
-    return role_checker
+    if not sesion or not sesion.estado:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token inválido o sesión expirada"
+        )
+
+    # Verificar expiración por inactividad
+    if sesion.ultima_actividad + sesion.expiracion_inactividad < datetime.utcnow():
+        sesion.estado = False
+        await db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Sesión expirada"
+        )
+
+    # Actualizar última actividad
+    sesion.ultima_actividad = datetime.utcnow()
+    await db.commit()
+
+    return sesion
+
+

@@ -1,5 +1,6 @@
 import asyncio
 from app.db.database import engine, Base
+import app.models  # Asegurarse de que los modelos estén importados
 
 async def init_db():
     async with engine.begin() as conn:
