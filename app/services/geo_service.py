@@ -1,7 +1,5 @@
-# app/services/geo_service.py
 import httpx
 import logging
-import os
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)

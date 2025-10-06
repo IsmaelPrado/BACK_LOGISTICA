@@ -1,23 +1,22 @@
-from fastapi import APIRouter, Depends, HTTPException, Response, status, Request
+from fastapi import APIRouter, Depends, status, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.database import get_db
 from app.schemas.api_response import APIResponse
-from app.schemas.auth import GoogleAuthResponse, GoogleUser, LoginRequest, DefaultResponse, LoginResponse, OTPRequest, PasswordRecoveryRequest, PasswordResetRequest, SessionResponse, TokenData, UsuarioRequest, UsuarioResponse, UsernameRecoveryRequest
+from app.schemas.auth import GoogleAuthResponse, GoogleUser, LoginRequest, LoginResponse, OTPRequest, PasswordRecoveryRequest, PasswordResetRequest, SessionResponse, UsuarioRequest, UsuarioResponse, UsernameRecoveryRequest
 from app.services.geo_service import GeoService
 from app.services.google_oauth import GoogleOAuthService
 from app.services.mail_service import MailService
 from app.services.session_service import SessionService
 from app.services.twofa_service import TwoFAService
 from app.services.user_service import UserService
-from app.core.security import create_access_token, generate_state, get_client_ip
+from app.core.security import generate_state
 from app.models.user import Usuario
 import logging
 from app.core.limiter import limiter
 from app.services.otp_service import OTPService
 from app.core.responses import ResponseCode
-from app.core.dependencies import get_current_user
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -27,11 +26,6 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 # Servicios
 mail_service = MailService()
 google_oauth_service = GoogleOAuthService()
-
-
-# @router.get("/me", response_model=APIResponse)
-# async def me(current_user = Depends(get_current_user)):
-#     return APIResponse.from_enum(ResponseCode.SUCCESS, data={"username": current_user.nombre_usuario, "email": current_user.correo_electronico})
 
 @router.post(
         "/login", 
@@ -131,7 +125,8 @@ async def login_step2(
                 estado=sesion.estado,
                 latitud=sesion.latitud,
                 longitud=sesion.longitud,
-                tiempo_restante=tiempo_restante
+                tiempo_restante=tiempo_restante,
+                token=sesion.token
             )
         )
 
@@ -144,7 +139,8 @@ async def login_step2(
             estado=sesion.estado,
             latitud=sesion.latitud,
             longitud=sesion.longitud,
-            tiempo_restante=None
+            tiempo_restante=None,
+            token=sesion.token
         )
     )
 
@@ -190,7 +186,8 @@ async def login_step2_totp(
                 estado=sesion.estado,
                 latitud=sesion.latitud,
                 longitud=sesion.longitud,
-                tiempo_restante=tiempo_restante
+                tiempo_restante=tiempo_restante,
+                token=sesion.token
             )
         )
 
@@ -203,7 +200,8 @@ async def login_step2_totp(
             estado=sesion.estado,
             latitud=sesion.latitud,
             longitud=sesion.longitud,
-            tiempo_restante=tiempo_restante
+            tiempo_restante=tiempo_restante,
+            token=sesion.token
         )
     )
 
