@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from app.api.v1 import routes_auth
+from app.api.v1 import routes_category
 from app.db.init_db import init_db
 from contextlib import asynccontextmanager
 from app.db.seed_data import seed_roles_and_permissions
@@ -12,6 +13,7 @@ from app.core.limiter import limiter
 from app.core.exception_handlers import validation_exception_handler, rate_limit_handler
 from app.middleware.security import basic_auth_middleware 
 from app.db.database import async_session
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -52,3 +54,5 @@ def root():
     return {"message": "API en funcionamiento"}
 
 app.include_router(routes_auth.router)
+app.include_router(routes_category.router)
+

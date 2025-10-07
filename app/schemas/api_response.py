@@ -1,4 +1,4 @@
-from typing import Generic, TypeVar, Optional
+from typing import Generic, TypeVar, Optional, List
 from pydantic import BaseModel
 from app.core.responses import ResponseCode
 
@@ -20,3 +20,13 @@ class APIResponse(BaseModel, Generic[T]):
             detail=detail,
             data=data
         )
+        
+class PaginationData(BaseModel, Generic[T]):
+    items: List[T]
+    page: int
+    per_page: int
+    total_items: int
+    total_pages: int
+
+class PaginatedResponse(APIResponse[PaginationData[T]], Generic[T]):
+    pass
