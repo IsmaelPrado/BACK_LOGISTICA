@@ -71,3 +71,49 @@ class CategoryService:
             total_items=total_items,
             total_pages=total_pages
         )
+
+    async def delete_category_by_name(self, name: str) -> CategoryResponse:
+            name = name.strip()
+            if not name:
+                raise ValueError("El nombre de la categoría no puede estar vacío.")
+
+            result = await self.db.execute(
+                select(Category).filter(Category.name == name)
+            )
+            category = result.scalars().first()
+
+            if not category:
+                raise ValueError(f"No se encontró la categoría con nombre '{name}'.")
+
+            await self.db.delete(category)
+            await self.db.commit()
+
+            return CategoryResponse.from_orm(category)
+
+    async def update_category_by_name(self, current_name: str, new_name: str) -> CategoryResponse:
+            current_name = current_name.strip()
+            new_name = new_name.strip()
+
+            if not current_name:
+                raise ValueError("El nombre actual de la categoría no puede estar vacío.")
+            if not new_name:
+                raise ValueError("El nuevo nombre de la categoría no puede estar vacío.")
+            if len(new_name) < 3:
+                raise ValueError("El nuevo nombre de la categoría debe tener al menos 3 caracteres.")
+
+            result = await self.db.execute(select(Category).filter(Category.name == current_name))
+            category = result.scalars().first()
+
+            if not category:
+                raise ValueError(f"No se encontró la categoría con nombre '{current_name}'.")
+
+            result = await self.db.execute(select(Category).filter(Category.name == new_name))
+            if result.scalars().first():
+                raise ValueError(f"Ya existe otra categoría con el nombre '{new_name}'.")
+
+            category.name = new_name
+            self.db.add(category)
+            await self.db.commit()
+            await self.db.refresh(category)
+
+            return CategoryResponse.from_orm(category)

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.database import get_db
 from app.services.category_service import CategoryService
-from app.schemas.category import CategoryCreate, CategoryPaginationRequest, CategoryResponse, CategorySingleResponse
+from app.schemas.category import CategoryCreate, CategoryPaginationRequest, CategoryResponse, CategorySingleResponse, CategoryUpdateRequest
 from app.schemas.api_response import APIResponse, PaginatedResponse
 from app.core.responses import ResponseCode
 
@@ -52,6 +52,58 @@ async def get_categories_paginated(
         )
     except Exception as e:
         return PaginatedResponse[CategoryResponse].from_enum(
+            ResponseCode.SERVER_ERROR,
+            detail=f"Ocurrió un error inesperado: {str(e)}"
+        )
+
+@router.delete("/delete", response_model=APIResponse[CategoryResponse])
+async def delete_category(request: CategoryCreate, db: AsyncSession = Depends(get_db)):
+    """
+    Elimina una categoría por su nombre.
+    """
+    service = CategoryService(db)
+    try:
+        deleted_category = await service.delete_category_by_name(request.name)
+        return APIResponse.from_enum(
+            ResponseCode.SUCCESS,
+            data=deleted_category,
+            detail=f"Categoría '{request.name}' eliminada exitosamente."
+        )
+    except ValueError as e:
+        return APIResponse.from_enum(
+            ResponseCode.NOT_FOUND,
+            detail=str(e)
+        )
+    except Exception as e:
+        return APIResponse.from_enum(
+            ResponseCode.SERVER_ERROR,
+            detail=f"Ocurrió un error inesperado: {str(e)}"
+        )
+
+@router.put("/update", response_model=APIResponse[CategoryResponse])
+async def update_category(request: CategoryUpdateRequest, db: AsyncSession = Depends(get_db)):
+    service = CategoryService(db)
+
+    try:
+        updated_category = await service.update_category_by_name(
+            current_name=request.current_name,
+            new_name=request.new_name
+        )
+
+        return APIResponse.from_enum(
+            ResponseCode.SUCCESS,
+            data=updated_category,
+            detail=f"Categoría renombrada de '{request.current_name}' a '{request.new_name}' correctamente."
+        )
+
+    except ValueError as e:
+        return APIResponse.from_enum(
+            ResponseCode.VALIDATION_ERROR,
+            detail=str(e)
+        )
+
+    except Exception as e:
+        return APIResponse.from_enum(
             ResponseCode.SERVER_ERROR,
             detail=f"Ocurrió un error inesperado: {str(e)}"
         )
