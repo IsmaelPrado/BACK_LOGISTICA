@@ -1,40 +1,73 @@
-from sqlalchemy.orm import Session
+from math import ceil
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
+from sqlalchemy.exc import IntegrityError
 from app.models.category import Category
-from app.schemas.category import CategoryCreate, CategoryUpdate, CategoryResponse
-from app.core.responses import ResponseCode
-from app.schemas.api_response import APIResponse
-from fastapi import HTTPException, status
+from app.schemas.api_response import PaginationData
+from app.schemas.category import CategoryCreate, CategoryResponse
+from pydantic import parse_obj_as
 
-def get_all_categories(db: Session):
-    categories = db.query(Category).all()
-    return APIResponse.from_enum(ResponseCode.SUCCESS, data=categories)
 
-def create_category(db: Session, category: CategoryCreate):
-    existing = db.query(Category).filter(Category.name == category.name).first()
-    if existing:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="La categoría ya existe"
+class CategoryService:
+    def __init__(self, db: AsyncSession):
+        self.db = db
+
+    async def create_category(self, category_data: CategoryCreate) -> CategoryResponse:
+        """
+        Crea una nueva categoría validando duplicados y campos requeridos.
+        """
+
+        # 🔹 Validación de nombre
+        if not category_data.name or not category_data.name.strip():
+            raise ValueError("El nombre de la categoría no puede estar vacío.")
+        if len(category_data.name.strip()) < 3:
+            raise ValueError("El nombre de la categoría debe tener al menos 3 caracteres.")
+
+        # 🔹 Validar duplicados (nombre único)
+        result = await self.db.execute(
+            select(Category).filter(Category.name == category_data.name.strip())
         )
-    new_category = Category(**category.dict())
-    db.add(new_category)
-    db.commit()
-    db.refresh(new_category)
-    return APIResponse.from_enum(ResponseCode.SUCCESS, data=new_category, detail="Categoría creada correctamente")
+        if result.scalars().first():
+            raise ValueError("Ya existe una categoría con ese nombre.")
 
-def update_category(db: Session, category_id: int, data: CategoryUpdate):
-    category = db.query(Category).filter(Category.id == category_id).first()
-    if not category:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Categoría no encontrada")
-    category.name = data.name
-    db.commit()
-    db.refresh(category)
-    return APIResponse.from_enum(ResponseCode.SUCCESS, data=category, detail="Categoría actualizada correctamente")
+        # 🔹 Crear nueva categoría
+        nueva_categoria = Category(
+            name=category_data.name.strip()
+        )
+        self.db.add(nueva_categoria)
 
-def delete_category(db: Session, category_id: int):
-    category = db.query(Category).filter(Category.id == category_id).first()
-    if not category:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Categoría no encontrada")
-    db.delete(category)
-    db.commit()
-    return APIResponse.from_enum(ResponseCode.SUCCESS, detail="Categoría eliminada correctamente")
+        try:
+            await self.db.flush()
+            await self.db.commit()
+        except IntegrityError:
+            await self.db.rollback()
+            raise ValueError("No se pudo crear la categoría (conflicto en la base de datos).")
+
+        await self.db.refresh(nueva_categoria)
+        return CategoryResponse.from_orm(nueva_categoria)
+
+
+ # Método para paginación
+    async def get_categories_paginated(self, page: int, per_page: int):
+        if page < 1:
+            page = 1
+        if per_page < 1:
+            per_page = 10
+
+        total_result = await self.db.execute(select(Category))
+        total_items = len(total_result.scalars().all())
+
+        offset = (page - 1) * per_page
+        result = await self.db.execute(select(Category).offset(offset).limit(per_page))
+        categories = result.scalars().all()
+
+        items = [CategoryResponse.from_orm(cat) for cat in categories]
+        total_pages = ceil(total_items / per_page) if total_items else 1
+
+        return PaginationData[CategoryResponse](
+            items=items,
+            page=page,
+            per_page=per_page,
+            total_items=total_items,
+            total_pages=total_pages
+        )
