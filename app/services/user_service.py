@@ -6,7 +6,7 @@ from sqlalchemy.future import select
 from sqlalchemy.exc import IntegrityError
 from app.models.password_resets import PasswordReset
 from app.models.user import Usuario
-from app.core.security import hash_password, verify_password
+from app.core.security import hash_password, hash_password_async, verify_password
 from app.schemas.auth import UsuarioRequest
 from pydantic import ValidationError
 import re
@@ -39,59 +39,62 @@ class UserService:
 
     # Crear usuario
     async def create_user(self, user_data: UsuarioRequest) -> Usuario:
-        # 🔹 Validaciones adicionales (no necesitas reconstruir el modelo)
-        if not user_data.nombre_usuario or not user_data.nombre_usuario.strip():
-            raise ValueError("El nombre de usuario no puede estar vacío.")
-        if len(user_data.nombre_usuario.strip()) < 3:
-            raise ValueError("El nombre de usuario debe tener al menos 3 caracteres.")
+            # ------------------------
+            # Validaciones básicas
+            # ------------------------
+            if not user_data.nombre_usuario or len(user_data.nombre_usuario.strip()) < 3:
+                raise ValueError("El nombre de usuario debe tener al menos 3 caracteres.")
 
-        if not user_data.contrasena or not user_data.confirmar_contrasena:
-            raise ValueError("La contraseña y su confirmación no pueden estar vacías.")
+            if not user_data.contrasena or not user_data.confirmar_contrasena:
+                raise ValueError("La contraseña y su confirmación no pueden estar vacías.")
 
-        if not user_data.rol or not user_data.rol.strip():
-            raise ValueError("El rol no puede estar vacío.")
+            if user_data.contrasena != user_data.confirmar_contrasena:
+                raise ValueError("Las contraseñas no coinciden.")
 
-        # Validar coincidencia de contraseñas
-        if user_data.contrasena != user_data.confirmar_contrasena:
-            raise ValueError("Las contraseñas no coinciden.")
+            if not user_data.rol or not user_data.rol.strip():
+                raise ValueError("El rol no puede estar vacío.")
 
-        # Validar fuerza de la contraseña
-        password_pattern = re.compile(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$')
-        if not password_pattern.match(user_data.contrasena):
-            raise ValueError("La contraseña debe contener mayúscula, minúscula, número y carácter especial.")
+            password_pattern = re.compile(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$')
+            if not password_pattern.match(user_data.contrasena):
+                raise ValueError(
+                    "La contraseña debe contener mayúscula, minúscula, número y carácter especial."
+                )
 
-        # Validar duplicados
-        result = await self.db.execute(
-            select(Usuario).filter(Usuario.nombre_usuario == user_data.nombre_usuario.strip())
-        )
-        if result.scalars().first():
-            raise ValueError("El nombre de usuario ya está en uso.")
+            # ------------------------
+            # Hash de contraseña async
+            # ------------------------
+            hashed_password = await hash_password_async(user_data.contrasena)
 
-        result = await self.db.execute(
-            select(Usuario).filter(Usuario.correo_electronico == user_data.correo_electronico.strip())
-        )
-        if result.scalars().first():
-            raise ValueError("El correo electrónico ya está registrado.")
+            # ------------------------
+            # Crear usuario
+            # ------------------------
+            nuevo = Usuario(
+                nombre_usuario=user_data.nombre_usuario.strip(),
+                correo_electronico=user_data.correo_electronico.strip(),
+                contrasena=hashed_password,
+                rol=user_data.rol.strip(),
+                secret_2fa=pyotp.random_base32()
+            )
 
-        # Crear usuario
-        nuevo = Usuario(
-            nombre_usuario=user_data.nombre_usuario.strip(),
-            correo_electronico=user_data.correo_electronico.strip(),
-            contrasena=hash_password(user_data.contrasena),
-            rol=user_data.rol.strip(),
-            secret_2fa=pyotp.random_base32()
-        )
-        self.db.add(nuevo)
+            # ------------------------
+            # Insertar con commit seguro
+            # ------------------------
+            async with self.db.begin():  # maneja commit/rollback automáticamente
+                self.db.add(nuevo)
+                try:
+                    await self.db.flush()  # opcional si necesitas ID
+                except IntegrityError as e:
+                    # Detectar duplicados por unique constraint
+                    if "nombre_usuario" in str(e.orig):
+                        raise ValueError("El nombre de usuario ya está en uso")
+                    elif "correo_electronico" in str(e.orig):
+                        raise ValueError("El correo electrónico ya está registrado")
+                    else:
+                        raise ValueError("No se pudo crear el usuario (conflicto en la base de datos)")
 
-        try:
-            await self.db.flush()
-            await self.db.commit()
-        except IntegrityError:
-            await self.db.rollback()
-            raise ValueError("No se pudo crear el usuario (conflicto en la base de datos).")
-
-        await self.db.refresh(nuevo)
-        return nuevo
+            # Refrescar para obtener ID generado
+            await self.db.refresh(nuevo)
+            return nuevo
 
 
     async def get_user_by_email(self, email: str) -> Usuario | None:

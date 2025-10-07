@@ -54,3 +54,4 @@ async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
             detail=custom_message
         ).model_dump()
     )
+

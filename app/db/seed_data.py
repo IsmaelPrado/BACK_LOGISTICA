@@ -1,3 +1,4 @@
+import pyotp
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from app.models.rol import Rol
@@ -49,6 +50,7 @@ async def seed_roles_and_permissions(db: AsyncSession):
             correo_electronico="vansestilo200@gmail.com",
             contrasena=hash_password("Linux123!"),
             rol="admin",
+            secret_2fa=pyotp.random_base32(),
             permisos=all_permisos
         )
         db.add(nuevo_admin)
