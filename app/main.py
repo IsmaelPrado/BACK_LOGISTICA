@@ -1,7 +1,9 @@
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from app.api.v1 import routes_admin_user, routes_auth
+from app.api.v1 import routes_admin_user
+from app.api.v1 import routes_auth
+from app.api.v1 import routes_category
 from app.db.init_db import init_db
 from contextlib import asynccontextmanager
 from app.db.seed_data import seed_roles_and_permissions
@@ -16,6 +18,7 @@ from app.middleware.security import basic_auth_middleware
 from app.db.database import async_session
 from app.schemas.api_response import APIResponse
 from app.core.responses import ResponseCode
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -57,6 +60,7 @@ def root():
 
 app.include_router(routes_auth.router)
 app.include_router(routes_admin_user.router)
+app.include_router(routes_category.router)
 
 @app.exception_handler(AdminSessionError)
 async def admin_session_exception_handler(request: Request, exc: AdminSessionError):
