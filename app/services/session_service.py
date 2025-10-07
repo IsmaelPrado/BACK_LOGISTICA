@@ -107,7 +107,7 @@ class SessionService:
         sesion.ultima_actividad = datetime.utcnow()
         await self.db.commit()
         return True
-
+    
     async def cerrar_sesion(self, token_sesion: str):
         result = await self.db.execute(
             select(Sesion).where(Sesion.token == token_sesion)

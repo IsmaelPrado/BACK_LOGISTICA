@@ -1,3 +1,5 @@
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 import secrets
 from fastapi import Request
@@ -9,6 +11,13 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def hash_password(password: str) -> str:
     return pwd_context.hash(password)
+
+async def hash_password_async(password: str) -> str:
+    loop = asyncio.get_running_loop()
+    with ThreadPoolExecutor() as pool:
+        # Ejecuta la función de hashing en un hilo separado
+        hashed = await loop.run_in_executor(pool, hash_password, password)
+    return hashed
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)

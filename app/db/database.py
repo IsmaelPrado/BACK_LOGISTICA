@@ -7,7 +7,7 @@ from typing import AsyncGenerator
 DATABASE_URL = settings.DATABASE_URL
 
 # Crear motor asíncrono
-engine = create_async_engine(DATABASE_URL, echo=True, future=True)
+engine = create_async_engine(DATABASE_URL, echo=True, future=True, pool_size=50, max_overflow=50)
 
 # Crear session local
 async_session = sessionmaker(
