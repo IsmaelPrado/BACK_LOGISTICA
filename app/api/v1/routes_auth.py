@@ -4,19 +4,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.database import get_db
 from app.schemas.api_response import APIResponse
-from app.schemas.auth import GoogleAuthResponse, GoogleUser, LoginRequest, LoginResponse, OTPRequest, PasswordRecoveryRequest, PasswordResetRequest, SessionResponse, UsuarioRequest, UsuarioResponse, UsernameRecoveryRequest
-from app.services.geo_service import GeoService
-from app.services.google_oauth import GoogleOAuthService
-from app.services.mail_service import MailService
-from app.services.session_service import SessionService
-from app.services.twofa_service import TwoFAService
-from app.services.user_service import UserService
+from app.schemas.auth import  GoogleUser, LoginRequest, LoginResponse, OTPRequest, PasswordRecoveryRequest, PasswordResetRequest, SessionResponse, UsuarioRequest, UsuarioResponse, UsernameRecoveryRequest
+# Services
+from app.services import  MailService, GoogleOAuthService, UserService, TwoFAService, OTPService, SessionService, GeoService
 from app.core.security import generate_state
 from app.models.user import Usuario
 import logging
 from app.core.limiter import limiter
-from app.services.otp_service import OTPService
-from app.core.responses import ResponseCode
+from app.core.enums.responses import ResponseCode
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

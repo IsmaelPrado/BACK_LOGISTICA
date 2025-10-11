@@ -1,10 +1,9 @@
 from datetime import datetime
-from fastapi import HTTPException, status
 from pydantic import BaseModel, EmailStr, field_validator, model_validator
 from typing import Annotated, Optional
-import re
 from enum import Enum
-from app.validators.common_validators import validar_email, validar_correo_electronico, validar_no_vacio
+from app.validators.common_validators import validar_email, validar_correo_electronico, validar_no_vacio, validar_contrasena, validar_rol
+from app.core.enums.roles_enum import UserRole
 
 # LOGIN
 
@@ -66,41 +65,15 @@ class UsuarioRequest(BaseModel):
     contrasena: Annotated[str, ...]
     confirmar_contrasena: str
     
-    rol: str = "usuario"
+    rol: str = UserRole.USER
     
     _validar_email = validar_correo_electronico()
     
-    @field_validator("nombre_usuario")
-    def nombre_no_vacio(cls, v):
-        if not v or not v.strip():
-            raise ValueError("El nombre de usuario no puede estar vacío.")
-        if len(v.strip()) < 3:
-            raise ValueError("El nombre de usuario debe tener al menos 3 caracteres.")
-        return v.strip()
+    _validar_nombre_usuario = validar_no_vacio("nombre_usuario")
 
-    @field_validator("contrasena")
-    def validar_contrasena(cls, v):
-        import re
-        # Validar longitud
-        if len(v) < 5:
-            raise ValueError("La contraseña debe tener al menos 5 caracteres.")
-        if len(v) > 64:
-            raise ValueError("La contraseña no puede exceder 64 caracteres.")
-        
-        # Validar composición
-        pattern = re.compile(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$')
-        if not pattern.match(v):
-            raise ValueError(
-                "La contraseña debe contener mayúscula, minúscula, número y carácter especial."
-            )
-        return v
+    _validar_contrasena = validar_contrasena()
     
-    @field_validator("rol")
-    def rol_valido(cls, v: str) -> str:
-        v = v.strip().lower()
-        if v not in {"admin", "usuario"}:
-            raise ValueError("El rol solo puede ser 'admin' o 'usuario'.")
-        return v
+    _validar_rol = validar_rol()
 
 
     @field_validator("confirmar_contrasena")

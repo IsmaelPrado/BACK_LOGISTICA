@@ -1,9 +1,11 @@
 from typing import List
 import pyotp
+from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
+from app.models.associations import usuario_permisos
 from app.models.user import Usuario
 from app.models.rol import Rol
 from app.models.permiso import Permiso
@@ -56,3 +58,41 @@ class AdminUserService:
         except IntegrityError:
             await self.db.rollback()
             raise ValueError("El nombre de usuario o correo ya existe")
+        
+
+    async def eliminar_usuario_por_nombre(self, nombre_usuario: str) -> bool:
+        """
+        Elimina un usuario y sus permisos asociados por su nombre de usuario.
+        Retorna True si se eliminó correctamente.
+        """
+        # Buscar usuario por nombre
+        result = await self.db.execute(
+            select(Usuario).filter(Usuario.nombre_usuario == nombre_usuario.strip())
+        )
+        usuario = result.scalars().first()
+
+        if not usuario:
+            raise ValueError(f"No se encontró el usuario con nombre '{nombre_usuario}'")
+
+        try:
+            # 1️⃣ Eliminar asociaciones en tabla intermedia usuario_permisos
+            await self.db.execute(
+                delete(usuario_permisos).where(
+                    usuario_permisos.c.id_usuario == usuario.id_usuario
+                )
+            )
+
+            # 2️⃣ Eliminar el usuario
+            await self.db.delete(usuario)
+
+            # 3️⃣ Confirmar cambios
+            await self.db.commit()
+            return True
+
+        except IntegrityError:
+            await self.db.rollback()
+            raise ValueError("Error al eliminar el usuario: conflicto en la base de datos.")
+
+        except Exception as e:
+            await self.db.rollback()
+            raise ValueError(f"Ocurrió un error inesperado al eliminar el usuario: {str(e)}")
