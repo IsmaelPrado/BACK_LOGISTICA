@@ -5,9 +5,6 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.database import get_db
 from app.models.sesion import Sesion
-from app.models.user import Usuario
-from app.services.user_service import UserService
-from app.core.responses import ResponseCode
 
 # ⚡ Aquí ponemos un tokenUrl dummy para que Swagger muestre el candado
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")

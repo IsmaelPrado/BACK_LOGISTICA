@@ -1,5 +1,7 @@
+from datetime import timedelta
 from sqlalchemy import Column, Integer, Numeric, DateTime, Interval, Boolean, ForeignKey, String, func, text
 from app.db.database import Base
+from app.core.config import settings
 
 class Sesion(Base):
     __tablename__ = "sesiones"
@@ -20,7 +22,7 @@ class Sesion(Base):
     )
     expiracion_inactividad = Column(
         Interval,
-        server_default=text("INTERVAL '2 minutes'"),
+        default=lambda: timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
         nullable=False
     )
     estado = Column(Boolean, nullable=False, server_default=text("TRUE"))

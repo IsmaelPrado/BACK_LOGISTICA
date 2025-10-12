@@ -1,12 +1,17 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Security
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.database import get_db
+from app.dependencies.auth import user_session_required
 from app.services.category_service import CategoryService
 from app.schemas.category import CategoryCreate, CategoryPaginationRequest, CategoryResponse, CategorySingleResponse, CategoryUpdateRequest
 from app.schemas.api_response import APIResponse, PaginatedResponse
-from app.core.responses import ResponseCode
+from app.core.enums.responses import ResponseCode
 
-router = APIRouter(prefix="/categories", tags=["Categories"])
+router = APIRouter(
+    prefix="/categories", 
+    tags=["categories"],
+    dependencies=[Security(user_session_required)]
+    )
 
 @router.post("/", response_model=CategorySingleResponse)
 async def create_category(category: CategoryCreate, db: AsyncSession = Depends(get_db)):
