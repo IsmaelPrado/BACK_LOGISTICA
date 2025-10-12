@@ -7,7 +7,7 @@ from slowapi.errors import RateLimitExceeded
 
 from app.schemas.api_response import APIResponse
 from app.core.enums.responses import ResponseCode
-from app.dependencies.auth import AdminSessionError  
+from app.dependencies.auth import AdminSessionError, UserSessionError  
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +65,16 @@ async def admin_session_exception_handler(request: Request, exc: AdminSessionErr
         ).model_dump()
     )
 
+async def user_session_exception_handler(request: Request, exc: UserSessionError):
+    """Maneja errores de sesión de usuario."""
+    return JSONResponse(
+        status_code=401,
+        content=APIResponse.from_enum(
+            ResponseCode.INVALID_TOKEN,
+            detail=exc.detail
+        ).model_dump()
+    )
+
 
 async def value_error_exception_handler(request: Request, exc: ValueError):
     """Maneja ValueError y devuelve un APIResponse estándar."""
@@ -87,4 +97,5 @@ def register_exception_handlers(app: FastAPI):
     app.add_exception_handler(RequestValidationError, validation_exception_handler)
     app.add_exception_handler(RateLimitExceeded, rate_limit_handler)
     app.add_exception_handler(AdminSessionError, admin_session_exception_handler)
+    app.add_exception_handler(UserSessionError, user_session_exception_handler)
     app.add_exception_handler(ValueError, value_error_exception_handler)

@@ -44,3 +44,41 @@ async def admin_session_required(
         raise AdminSessionError("No autorizado")
 
     return usuario
+
+
+# Excepción personalizada
+class UserSessionError(Exception):
+    def __init__(self, detail: str):
+        self.detail = detail
+
+# Dependencia para cualquier usuario
+async def user_session_required(
+    token: str = Security(api_key_header),
+    db: AsyncSession = Depends(get_db)
+):
+    if not token:
+        raise UserSessionError("Token no proporcionado")
+    
+    # Buscar la sesión por token
+    result = await db.execute(select(Sesion).where(Sesion.token == token))
+    sesion = result.scalars().first()
+    
+    if not sesion or not sesion.estado:
+        raise UserSessionError("Sesión inválida o expirada")
+
+    # Verificar inactividad
+    if sesion.ultima_actividad + sesion.expiracion_inactividad < datetime.utcnow():
+        sesion.estado = False
+        await db.commit()
+        raise UserSessionError("Sesión expirada por inactividad")
+
+    # Actualizar última actividad
+    sesion.ultima_actividad = datetime.utcnow()
+    await db.commit()
+
+    # Traer usuario (sin validar rol)
+    usuario = await db.get(Usuario, sesion.id_usuario)
+    if not usuario:
+        raise UserSessionError("Usuario no encontrado")
+
+    return usuario
