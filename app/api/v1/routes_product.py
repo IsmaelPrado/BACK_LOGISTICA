@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.database import get_db
-from app.schemas.product import ProductCreate, ProductDeleteRequest, ProductPaginationRequest, ProductResponse, ProductSingleResponse
+from app.schemas.product import ProductCreate, ProductDeleteRequest, ProductPaginationRequest, ProductResponse, ProductSingleResponse, ProductUpdateRequest
 from app.schemas.api_response import APIResponse, PaginatedResponse
 from app.services.product_service import ProductService
 from app.core.enums.responses import ResponseCode
@@ -77,6 +77,31 @@ async def delete_product(request: ProductDeleteRequest, db: AsyncSession = Depen
     except ValueError as e:
         return APIResponse.from_enum(
             ResponseCode.NOT_FOUND,
+            detail=str(e)
+        )
+    except Exception as e:
+        return APIResponse.from_enum(
+            ResponseCode.SERVER_ERROR,
+            detail=f"Ocurrió un error inesperado: {str(e)}"
+        )
+        
+@router.put("/update", response_model=ProductSingleResponse)
+async def update_product(request: ProductUpdateRequest, db: AsyncSession = Depends(get_db)):
+    """
+    Actualiza los datos de un producto buscado por su nombre.
+    """
+    service = ProductService(db)
+
+    try:
+        updated_product = await service.update_product_by_name(request)
+        return APIResponse.from_enum(
+            ResponseCode.SUCCESS,
+            data=updated_product,
+            detail=f"Producto '{request.current_name}' actualizado exitosamente."
+        )
+    except ValueError as e:
+        return APIResponse.from_enum(
+            ResponseCode.VALIDATION_ERROR,
             detail=str(e)
         )
     except Exception as e:
