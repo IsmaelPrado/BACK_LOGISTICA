@@ -1,6 +1,6 @@
 from typing import List
 import pyotp
-from sqlalchemy import delete
+from sqlalchemy import delete, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.exc import IntegrityError
@@ -9,7 +9,8 @@ from app.models.associations.usuario_permisos import usuario_permisos
 from app.models.user import Usuario
 from app.models.rol import Rol
 from app.models.permiso import Permiso
-from app.schemas.user import UsuarioCreateRequest, UsuarioUpdateRequest
+from app.schemas.api_response import PaginationData
+from app.schemas.user import UsuarioCreateRequest, UsuarioCreateResponse, UsuarioPaginationRequest, UsuarioUpdateRequest
 from app.core.security import hash_password
 
 class AdminUserService:
@@ -149,3 +150,45 @@ class AdminUserService:
         except Exception as e:
             await self.db.rollback()
             raise ValueError(f"Error al actualizar el usuario: {str(e)}")
+        
+    async def get_usuarios_paginated(self, data: UsuarioPaginationRequest):
+        """
+        Retorna una lista paginada de usuarios.
+        UsuarioPaginationRequest contiene page, per_page y filtro opcional por nombre_usuario.
+        """
+        page = max(data.page, 1)
+        per_page = max(data.per_page, 1)
+        offset = (page - 1) * per_page
+
+        query = select(Usuario).options(selectinload(Usuario.permisos))
+
+        # Filtro por nombre de usuario si se proporciona
+        if data.nombre_usuario:
+            query = query.filter(Usuario.nombre_usuario.ilike(f"%{data.nombre_usuario.strip()}%"))
+
+        total_result = await self.db.execute(
+            select(func.count()).select_from(query.subquery())
+        )
+        total_usuarios = total_result.scalar_one()
+
+        result = await self.db.execute(
+            query.offset(offset).limit(per_page)
+        )
+        usuarios = result.scalars().all()
+
+        return PaginationData[UsuarioCreateResponse](
+            items=[
+                UsuarioCreateResponse.model_validate(
+                    {
+                        **u.__dict__,
+                        "permisos": [p.nombre for p in u.permisos]  # 👈 convertir a lista de strings
+                    }
+                )
+                for u in usuarios
+            ],
+            page=page,
+            per_page=per_page,
+            total_items=total_usuarios,
+            total_pages=(total_usuarios + per_page - 1) // per_page
+        )
+

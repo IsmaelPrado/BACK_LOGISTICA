@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Security
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.database import get_db
 from app.schemas.api_response import APIResponse
-from app.schemas.user import UsuarioCreateRequest, UsuarioCreateResponse, UsuarioDeleteRequest, UsuarioUpdateRequest
+from app.schemas.user import UsuarioCreateRequest, UsuarioCreateResponse, UsuarioDeleteRequest, UsuarioPaginationRequest, UsuarioUpdateRequest
 from app.services import AdminUserService
 from app.core.enums.responses import ResponseCode
 from app.dependencies.auth import admin_session_required
@@ -90,4 +90,22 @@ async def actualizar_usuario(
         ResponseCode.SUCCESS,
         data=usuario_resp,
         detail="Usuario actualizado exitosamente"
+    )
+
+# -----------------------------
+# Obtener usuarios paginados (solo admins)
+# -----------------------------
+@router.post("/listar", response_model=APIResponse)
+async def obtener_usuarios_paginados(
+    request: UsuarioPaginationRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    service = AdminUserService(db)
+    usuarios_paginados = await service.get_usuarios_paginated(
+        data=request
+    )
+    return APIResponse.from_enum(
+        ResponseCode.SUCCESS,
+        data=usuarios_paginados,
+        detail="Usuarios obtenidos exitosamente"
     )
