@@ -7,8 +7,8 @@ from sqlalchemy.exc import IntegrityError
 from app.models.product import Product
 from app.models.category import Category
 from app.schemas.api_response import PaginationData
-from app.schemas.product import ProductCreate, ProductResponse
 from sqlalchemy.orm import selectinload
+from app.schemas.product import ProductCreate, ProductResponse, ProductUpdateRequest
 
 class ProductService:
     def __init__(self, db: AsyncSession):
@@ -132,3 +132,77 @@ class ProductService:
             total_items=total_items,
             total_pages=total_pages
         )
+
+    async def delete_product_by_name(self, name: str) -> ProductResponse:
+            """
+            Elimina un producto por su nombre si existe.
+            """
+            name = name.strip()
+            if not name:
+                raise ValueError("El nombre del producto no puede estar vacío.")
+
+            result = await self.db.execute(
+                select(Product).filter(Product.name == name)
+            )
+            product = result.scalars().first()
+
+            if not product:
+                raise ValueError(f"No se encontró un producto con nombre '{name}'.")
+
+            await self.db.delete(product)
+            await self.db.commit()
+
+            return ProductResponse.from_orm(product)
+        
+    async def update_product_by_name(self, update_data: ProductUpdateRequest) -> ProductResponse:
+        """
+        Actualiza un producto buscado por su nombre.
+        Solo actualiza los campos que vienen con valor en la request.
+        """
+        current_name = update_data.current_name.strip()
+        if not current_name:
+            raise ValueError("El nombre actual del producto no puede estar vacío.")
+
+        # Buscar producto exacto
+        result = await self.db.execute(select(Product).filter(Product.name == current_name))
+        product = result.scalars().first()
+        if not product:
+            raise ValueError(f"No se encontró el producto con nombre '{current_name}'.")
+
+        # Convertimos request a dict y eliminamos campos None o strings vacías
+        update_fields = {
+            k: v for k, v in update_data.dict(exclude={"current_name"}).items()
+            if v is not None and (not isinstance(v, str) or v.strip() != "")
+        }
+
+        # Validaciones específicas
+        if "sale_price" in update_fields and update_fields["sale_price"] <= 0:
+            raise ValueError("El precio debe ser mayor que cero.")
+        if "inventory" in update_fields and update_fields["inventory"] < 0:
+            raise ValueError("El inventario no puede ser negativo.")
+        if "min_inventory" in update_fields and update_fields["min_inventory"] < 0:
+            raise ValueError("El inventario mínimo no puede ser negativo.")
+        if "new_name" in update_fields and len(update_fields["new_name"].strip()) < 3:
+            raise ValueError("El nuevo nombre del producto debe tener al menos 3 caracteres.")
+        if not update_fields:
+            raise ValueError("No se proporcionaron datos válidos para actualizar el producto.")
+
+        # Actualizar campos dinámicamente
+        for field, value in update_fields.items():
+            if isinstance(value, str):
+                value = value.strip()
+            # Mapear new_name a name
+            if field == "new_name":
+                setattr(product, "name", value)
+            else:
+                setattr(product, field, value)
+
+        # Commit y refresco
+        try:
+            await self.db.commit()
+            await self.db.refresh(product)
+        except IntegrityError as e:
+            await self.db.rollback()
+            raise ValueError(f"No se pudo actualizar el producto (conflicto en la base de datos): {e}")
+
+        return ProductResponse.from_orm(product)
