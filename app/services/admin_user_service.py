@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
-from app.models.associations import usuario_permisos
+from app.models.associations.usuario_permisos import usuario_permisos
 from app.models.user import Usuario
 from app.models.rol import Rol
 from app.models.permiso import Permiso
