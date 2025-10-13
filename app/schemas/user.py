@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from typing import Optional, List
 from datetime import datetime
 
@@ -36,8 +36,7 @@ class UsuarioCreateResponse(BaseModel):
     permisos: List[str] = []
     fecha_creacion: datetime
 
-    class Config:
-        orm_mode = True
+    model_config =  ConfigDict(from_attributes=True)
 
 # -----------------------------
 # Request para eliminar usuario
@@ -80,3 +79,11 @@ class UsuarioUpdateResponse(BaseModel):
 
     class Config:
         orm_mode = True
+
+# -----------------------------
+# Request para obtener usuarios paginados
+# -----------------------------
+class UsuarioPaginationRequest(BaseModel):
+    page: int = 1
+    per_page: int = 10
+    nombre_usuario: Optional[str] = None  # Filtro opcional por nombre de usuario
