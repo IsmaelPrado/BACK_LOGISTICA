@@ -89,7 +89,7 @@ async def permission_exception_handler(request: Request, exc: PermissionDeniedEr
 async def value_error_exception_handler(request: Request, exc: ValueError):
     """Maneja ValueError y devuelve un APIResponse estándar."""
     return JSONResponse(
-        status_code=400,
+        status_code=200,
         content=APIResponse.from_enum(
             ResponseCode.BAD_REQUEST,
             detail=str(exc)
