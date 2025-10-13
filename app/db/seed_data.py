@@ -25,6 +25,9 @@ async def seed_roles_and_permissions(db: AsyncSession):
         {"nombre": "modificar_categoria", "descripcion": "Puede modificar categorías"},
         {"nombre": "eliminar_categoria", "descripcion": "Puede eliminar categorías"},
         {"nombre": "ver_categorias", "descripcion": "Puede ver categorías"},
+
+        # Permiso de ventas
+        {"nombre": "crear_venta", "descripcion": "Puede crear ventas"},
     ]
 
     # Insertar roles si no existen
