@@ -74,16 +74,29 @@ async def delete_category(request: CategoryCreate, db: AsyncSession = Depends(ge
             data=deleted_category,
             detail=f"Categoría '{request.name}' eliminada exitosamente."
         )
+
     except ValueError as e:
+        detail_lower = str(e).lower()
+
+        # Verificar tipo de error según el mensaje
+        if "no se encontró" in detail_lower:
+            code = ResponseCode.NOT_FOUND
+        elif "productos asociados" in detail_lower:
+            code = ResponseCode.CONFLICT
+        else:
+            code = ResponseCode.VALIDATION_ERROR
+
         return APIResponse.from_enum(
-            ResponseCode.NOT_FOUND,
+            code,
             detail=str(e)
         )
+
     except Exception as e:
         return APIResponse.from_enum(
             ResponseCode.SERVER_ERROR,
             detail=f"Ocurrió un error inesperado: {str(e)}"
         )
+
 
 @router.put("/update", response_model=APIResponse[CategoryResponse])
 async def update_category(request: CategoryUpdateRequest, db: AsyncSession = Depends(get_db)):

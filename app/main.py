@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from app.api.v1 import routes_admin_user
 from app.api.v1 import routes_auth
 from app.api.v1 import routes_category
+from app.api.v1 import routes_product
 from app.db.init_db import init_db
 from contextlib import asynccontextmanager
 from app.db.seed_data import seed_roles_and_permissions
@@ -54,4 +55,6 @@ def root():
 app.include_router(routes_auth.router)
 app.include_router(routes_admin_user.router)
 app.include_router(routes_category.router)
+app.include_router(routes_product.router)
+
 
