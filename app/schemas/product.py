@@ -59,6 +59,11 @@ class ProductResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+class ProductPaginationRequest(BaseModel):
+    page: int = 1
+    per_page: int = 10
+    category_name: Optional[str] = None  # filtro por nombre de categoría
+    product_name: Optional[str] = None   # búsqueda por palabra clave en nombre de producto
 
 class ProductSingleResponse(APIResponse[ProductResponse]):
     pass
