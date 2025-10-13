@@ -64,6 +64,10 @@ class ProductPaginationRequest(BaseModel):
     per_page: int = 10
     category_name: Optional[str] = None  # filtro por nombre de categoría
     product_name: Optional[str] = None   # búsqueda por palabra clave en nombre de producto
+    
+class ProductDeleteRequest(BaseModel):
+    """Datos necesarios para eliminar un producto por su nombre."""
+    name: str = Field(..., min_length=1, description="Nombre del producto a eliminar")
 
 class ProductSingleResponse(APIResponse[ProductResponse]):
     pass
