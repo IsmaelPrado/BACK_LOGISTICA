@@ -102,3 +102,24 @@ class ProductService:
             total_items=total_items,
             total_pages=total_pages
         )
+
+    async def delete_product_by_name(self, name: str) -> ProductResponse:
+            """
+            Elimina un producto por su nombre si existe.
+            """
+            name = name.strip()
+            if not name:
+                raise ValueError("El nombre del producto no puede estar vacío.")
+
+            result = await self.db.execute(
+                select(Product).filter(Product.name == name)
+            )
+            product = result.scalars().first()
+
+            if not product:
+                raise ValueError(f"No se encontró un producto con nombre '{name}'.")
+
+            await self.db.delete(product)
+            await self.db.commit()
+
+            return ProductResponse.from_orm(product)
