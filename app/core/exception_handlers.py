@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     logger.warning(f"Error de validación en {request.url}: {exc.errors()}")
 
+    # Si el cuerpo no es un JSON válido
     if "JSON decode error" in str(exc):
         return JSONResponse(
             status_code=status.HTTP_200_OK,
@@ -27,21 +28,33 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
             ).model_dump()
         )
 
-    first_error = exc.errors()[0]["msg"] if exc.errors() else "Error de validación"
+    first_error = exc.errors()[0] if exc.errors() else None
+    error_msg = first_error.get("msg", "Error de validación") if first_error else "Error de validación"
 
-    if first_error == "Input should be a valid string":
-        first_error = "Tipo de dato inválido"
+    # 🟡 Manejo especial: campo requerido faltante
+    if error_msg == "Field required":
+        # ejemplo: loc = ('body', 'nombre_usuario')
+        loc = first_error.get("loc", [])
+        campo = loc[-1] if loc else "desconocido"
+        error_msg = f"Falta el campo obligatorio: '{campo}'"
 
-    if first_error.lower().startswith("value error,"):
-        first_error = first_error.split(",", 1)[1].strip()
+    # 🟡 Tipo de dato incorrecto
+    elif error_msg == "Input should be a valid string":
+        error_msg = "Tipo de dato inválido (se esperaba una cadena de texto)"
 
+    # 🟡 Si viene en formato 'Value error, ...'
+    elif error_msg.lower().startswith("value error,"):
+        error_msg = error_msg.split(",", 1)[1].strip()
+
+    # 🧩 Respuesta estándar con tu APIResponse
     return JSONResponse(
         status_code=status.HTTP_200_OK,
         content=APIResponse.from_enum(
             ResponseCode.VALIDATION_ERROR,
-            detail=first_error
+            detail=error_msg
         ).model_dump()
     )
+
 
 
 async def rate_limit_handler(request: Request, exc: RateLimitExceeded):

@@ -23,3 +23,6 @@ class Product(Base):
 
     # 🔹 Relación bidireccional con Category
     category = relationship("Category", back_populates="products")
+
+    # 🔹 Relación bidireccional con InventoryMovement
+    inventory_movements = relationship("InventoryMovement", back_populates="product")
