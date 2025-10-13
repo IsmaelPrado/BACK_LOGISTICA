@@ -2,7 +2,7 @@ from datetime import datetime
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Enum as SQLEnum, Index
 from sqlalchemy.orm import relationship  
 from app.db.database import Base
-from enums.tipo_movimiento import MovementType
+from app.core.enums.tipo_movimiento import MovementType
 
 
 class InventoryMovement(Base):
@@ -22,6 +22,6 @@ class InventoryMovement(Base):
     previous_inventory = Column(Integer, nullable=False)
     new_inventory = Column(Integer, nullable=False)
     date = Column(DateTime, default=datetime.utcnow, nullable=False)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    user_id = Column(Integer, ForeignKey("usuarios.id_usuario"), nullable=True)
 
     product = relationship("Product", back_populates="inventory_movements")
