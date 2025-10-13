@@ -9,7 +9,7 @@ from app.models.associations import usuario_permisos
 from app.models.user import Usuario
 from app.models.rol import Rol
 from app.models.permiso import Permiso
-from app.schemas.user import UsuarioCreateRequest
+from app.schemas.user import UsuarioCreateRequest, UsuarioUpdateRequest
 from app.core.security import hash_password
 
 class AdminUserService:
@@ -96,3 +96,56 @@ class AdminUserService:
         except Exception as e:
             await self.db.rollback()
             raise ValueError(f"Ocurrió un error inesperado al eliminar el usuario: {str(e)}")
+
+     # -----------------------------
+    # Actualizar usuario por nombre
+    # -----------------------------
+    async def actualizar_usuario_por_nombre(self, data: UsuarioUpdateRequest) -> Usuario:
+        """
+        Actualiza los datos de un usuario (por nombre_usuario).
+        """
+        result = await self.db.execute(
+            select(Usuario)
+            .options(selectinload(Usuario.permisos))
+            .filter(Usuario.nombre_usuario == data.nombre_usuario.strip())
+        )
+        usuario = result.scalars().first()
+
+        if not usuario:
+            raise ValueError(f"No se encontró el usuario '{data.nombre_usuario}'")
+
+        # Actualizar campos básicos si vienen en el request
+        if data.nuevo_nombre_usuario:
+            usuario.nombre_usuario = data.nuevo_nombre_usuario
+        if data.correo_electronico:
+            usuario.correo_electronico = data.correo_electronico
+        if data.contrasena:
+            usuario.contrasena = hash_password(data.contrasena)
+        if data.rol:
+            usuario.rol = data.rol
+
+        # Actualizar permisos (si se proporcionan)
+        if data.permisos is not None:
+            permisos_query = await self.db.execute(
+                select(Permiso).where(Permiso.nombre.in_(data.permisos))
+            )
+            permisos_encontrados = permisos_query.scalars().all()
+
+            nombres_permisos_encontrados = [p.nombre for p in permisos_encontrados]
+            permisos_faltantes = set(data.permisos) - set(nombres_permisos_encontrados)
+            if permisos_faltantes:
+                raise ValueError(f"Los siguientes permisos no existen: {', '.join(permisos_faltantes)}")
+
+            usuario.permisos = permisos_encontrados
+
+        try:
+            await self.db.commit()
+            await self.db.refresh(usuario)
+            return usuario
+
+        except IntegrityError:
+            await self.db.rollback()
+            raise ValueError("El nombre de usuario o correo ya existe.")
+        except Exception as e:
+            await self.db.rollback()
+            raise ValueError(f"Error al actualizar el usuario: {str(e)}")

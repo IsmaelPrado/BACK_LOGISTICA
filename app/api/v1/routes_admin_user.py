@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Security
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.database import get_db
 from app.schemas.api_response import APIResponse
-from app.schemas.user import UsuarioCreateRequest, UsuarioCreateResponse, UsuarioDeleteRequest
+from app.schemas.user import UsuarioCreateRequest, UsuarioCreateResponse, UsuarioDeleteRequest, UsuarioUpdateRequest
 from app.services import AdminUserService
 from app.core.enums.responses import ResponseCode
 from app.dependencies.auth import admin_session_required
@@ -62,4 +62,32 @@ async def eliminar_usuario(
     return APIResponse.from_enum(
         ResponseCode.SUCCESS,
         detail="Usuario eliminado exitosamente"
+    )
+
+# -----------------------------
+# Actualizar usuario (solo admins)
+# -----------------------------
+@router.put("/", response_model=APIResponse)
+async def actualizar_usuario(
+    update_request: UsuarioUpdateRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    service = AdminUserService(db)
+    usuario = await service.actualizar_usuario_por_nombre(update_request)
+    permisos_nombres = [perm.nombre for perm in usuario.permisos] if usuario.permisos else []
+
+    usuario_resp = UsuarioCreateResponse(
+        id_usuario=usuario.id_usuario,
+        nombre_usuario=usuario.nombre_usuario,
+        correo_electronico=usuario.correo_electronico,
+        rol=usuario.rol,
+        secret_2fa=usuario.secret_2fa,
+        fecha_creacion=usuario.fecha_creacion,
+        permisos=permisos_nombres
+    )
+
+    return APIResponse.from_enum(
+        ResponseCode.SUCCESS,
+        data=usuario_resp,
+        detail="Usuario actualizado exitosamente"
     )
