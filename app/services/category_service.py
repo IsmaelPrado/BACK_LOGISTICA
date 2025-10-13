@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.exc import IntegrityError
 from app.models.category import Category
+from app.models.product import Product
 from app.schemas.api_response import PaginationData
 from app.schemas.category import CategoryCreate, CategoryResponse
 from pydantic import parse_obj_as
@@ -72,23 +73,35 @@ class CategoryService:
             total_pages=total_pages
         )
 
+   
     async def delete_category_by_name(self, name: str) -> CategoryResponse:
-            name = name.strip()
-            if not name:
-                raise ValueError("El nombre de la categoría no puede estar vacío.")
+        name = name.strip()
+        if not name:
+            raise ValueError("El nombre de la categoría no puede estar vacío.")
 
-            result = await self.db.execute(
-                select(Category).filter(Category.name == name)
+        # Buscar categoría
+        result = await self.db.execute(select(Category).filter(Category.name == name))
+        category = result.scalars().first()
+
+        if not category:
+            raise ValueError(f"No se encontró la categoría con nombre '{name}'.")
+
+        # 🔍 Verificar si tiene productos asociados
+        product_result = await self.db.execute(
+            select(Product).filter(Product.id_category == category.id)
+        )
+        products = product_result.scalars().all()
+
+        if products:
+            raise ValueError(
+                f"No se puede eliminar la categoría '{name}' porque tiene productos asociados."
             )
-            category = result.scalars().first()
 
-            if not category:
-                raise ValueError(f"No se encontró la categoría con nombre '{name}'.")
+        # ✅ Si no tiene productos, eliminarla
+        await self.db.delete(category)
+        await self.db.commit()
 
-            await self.db.delete(category)
-            await self.db.commit()
-
-            return CategoryResponse.from_orm(category)
+        return CategoryResponse.from_orm(category)
 
     async def update_category_by_name(self, current_name: str, new_name: str) -> CategoryResponse:
             current_name = current_name.strip()
