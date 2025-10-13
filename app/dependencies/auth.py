@@ -1,14 +1,16 @@
+import logging
 from fastapi import Depends, Security
 from fastapi.security import APIKeyHeader
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from datetime import datetime
 from app.db.database import get_db
+from app.models.permiso import Permiso
 from app.models.user import Usuario
 from app.models.sesion import Sesion
 from app.core.enums.roles_enum import UserRole
 
-api_key_header = APIKeyHeader(name="Token", auto_error=False)
+api_key_header = APIKeyHeader(name="Authorization", auto_error=False)
 # Excepción personalizada
 class AdminSessionError(Exception):
     def __init__(self, detail: str):
@@ -82,3 +84,29 @@ async def user_session_required(
         raise UserSessionError("Usuario no encontrado")
 
     return usuario
+
+class PermissionDeniedError(Exception):
+    def __init__(self, detail: str):
+        self.detail = detail
+
+# Dependencia para permisos específicos
+def permission_required(permission_name: str):
+    async def _validator(
+            usuario: Usuario = Depends(user_session_required),
+            db: AsyncSession = Depends(get_db)
+    ):
+        if usuario.rol == UserRole.ADMIN:
+            return usuario  # Los admins tienen todos los permisos
+        
+        result = await db.execute(
+            select(Permiso)
+            .join(Permiso.usuarios)
+            .where(Permiso.nombre == permission_name)
+            .where(Usuario.id_usuario == usuario.id_usuario)
+        )
+        permiso = result.scalars().first()
+        if not permiso:
+            raise PermissionDeniedError(f"No tienes permisos para '{permission_name}'")
+
+        return usuario
+    return _validator
