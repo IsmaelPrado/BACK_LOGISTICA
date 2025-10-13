@@ -8,6 +8,7 @@ from app.models.product import Product
 from app.models.category import Category
 from app.schemas.api_response import PaginationData
 from app.schemas.product import ProductCreate, ProductResponse
+from sqlalchemy.orm import selectinload
 
 class ProductService:
     def __init__(self, db: AsyncSession):
@@ -19,7 +20,7 @@ class ProductService:
         """
 
         # Validar categoría existente
-        result = await self.db.execute(select(Category).filter(Category.id == product_data.id_category))
+        result = await self.db.execute(select(Category).filter(Category.name == product_data.category))
         category = result.scalars().first()
         if not category:
             raise ValueError("La categoría especificada no existe.")
@@ -38,7 +39,7 @@ class ProductService:
             sale_price=product_data.sale_price,
             inventory=product_data.inventory,
             min_inventory=product_data.min_inventory,
-            id_category=product_data.id_category
+            id_category=category.id
         )
 
         self.db.add(nuevo_producto)
@@ -51,7 +52,18 @@ class ProductService:
             raise ValueError("Error al registrar el producto. Verifique los datos.")
         
         await self.db.refresh(nuevo_producto)
-        return ProductResponse.from_orm(nuevo_producto)
+        return ProductResponse(
+            id_product=nuevo_producto.id_product,
+            code=nuevo_producto.code,
+            barcode=nuevo_producto.barcode,
+            name=nuevo_producto.name,
+            description=nuevo_producto.description,
+            sale_price=nuevo_producto.sale_price,
+            inventory=nuevo_producto.inventory,
+            min_inventory=nuevo_producto.min_inventory,
+            category=category.name,
+            date_added=nuevo_producto.date_added
+        )
 
     # Método para paginación de productos
     async def get_products_paginated(
@@ -68,7 +80,11 @@ class ProductService:
             per_page = 10
 
         # Query base con join a Category
-        query = select(Product).join(Category)
+        query = (
+            select(Product)
+            .options(selectinload(Product.category))
+            .join(Category)
+        )
 
         # Filtro opcional por nombre de categoría (case-insensitive)
         if category_name:
@@ -92,7 +108,21 @@ class ProductService:
         products = result.scalars().all()
 
         # Convertir a schema
-        items = [ProductResponse.from_orm(prod) for prod in products]
+        items = [
+            ProductResponse(
+                id_product=prod.id_product,
+                code=prod.code,
+                barcode=prod.barcode,
+                name=prod.name,
+                description=prod.description,
+                sale_price=prod.sale_price,
+                inventory=prod.inventory,
+                min_inventory=prod.min_inventory,
+                category=prod.category.name if prod.category else "Sin Categoría",
+                date_added=prod.date_added
+            ) 
+            for prod in products
+        ]
         total_pages = ceil(total_items / per_page) if total_items else 1
 
         return PaginationData[ProductResponse](
