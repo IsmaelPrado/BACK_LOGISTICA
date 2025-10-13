@@ -11,7 +11,7 @@ class ProductBase(BaseModel):
     sale_price: float
     inventory: int
     min_inventory: int
-    id_category: int
+    category: str
 
     @field_validator("name")
     def validar_nombre(cls, v):
@@ -54,7 +54,7 @@ class ProductResponse(BaseModel):
     sale_price: float
     inventory: int
     min_inventory: int
-    id_category: int
+    category: str
     date_added: datetime  # Se mostrará, pero no se envía al crear
 
     model_config = ConfigDict(from_attributes=True)

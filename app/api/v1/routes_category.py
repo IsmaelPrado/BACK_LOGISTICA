@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Security
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.database import get_db
-from app.dependencies.auth import user_session_required
+from app.dependencies.auth import permission_required
 from app.services.category_service import CategoryService
 from app.schemas.category import CategoryCreate, CategoryPaginationRequest, CategoryResponse, CategorySingleResponse, CategoryUpdateRequest
 from app.schemas.api_response import APIResponse, PaginatedResponse
@@ -10,11 +10,14 @@ from app.core.enums.responses import ResponseCode
 router = APIRouter(
     prefix="/categories", 
     tags=["categories"],
-    dependencies=[Security(user_session_required)]
     )
 
 @router.post("/", response_model=CategorySingleResponse)
-async def create_category(category: CategoryCreate, db: AsyncSession = Depends(get_db)):
+async def create_category(
+    category: CategoryCreate, 
+    db: AsyncSession = Depends(get_db),
+    usuario=Depends(permission_required("crear_categoria"))
+    ):
     service = CategoryService(db)
 
     try:
@@ -45,7 +48,8 @@ async def create_category(category: CategoryCreate, db: AsyncSession = Depends(g
 @router.post("/paginated", response_model=PaginatedResponse[CategoryResponse])
 async def get_categories_paginated(
     request: CategoryPaginationRequest,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    usuario=Depends(permission_required("ver_categorias"))
 ):
     service = CategoryService(db)
     try:
@@ -62,7 +66,11 @@ async def get_categories_paginated(
         )
 
 @router.delete("/delete", response_model=APIResponse[CategoryResponse])
-async def delete_category(request: CategoryCreate, db: AsyncSession = Depends(get_db)):
+async def delete_category(
+    request: CategoryCreate, 
+    db: AsyncSession = Depends(get_db),
+    usuario=Depends(permission_required("eliminar_categoria"))
+    ):
     """
     Elimina una categoría por su nombre.
     """
@@ -99,7 +107,11 @@ async def delete_category(request: CategoryCreate, db: AsyncSession = Depends(ge
 
 
 @router.put("/update", response_model=APIResponse[CategoryResponse])
-async def update_category(request: CategoryUpdateRequest, db: AsyncSession = Depends(get_db)):
+async def update_category(
+    request: CategoryUpdateRequest, 
+    db: AsyncSession = Depends(get_db),
+    usuario=Depends(permission_required("modificar_categoria"))
+    ):
     service = CategoryService(db)
 
     try:

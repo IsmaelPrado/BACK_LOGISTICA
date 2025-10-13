@@ -1,15 +1,20 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.database import get_db
+from app.dependencies.auth import permission_required
 from app.schemas.product import ProductCreate, ProductDeleteRequest, ProductPaginationRequest, ProductResponse, ProductSingleResponse, ProductUpdateRequest
 from app.schemas.api_response import APIResponse, PaginatedResponse
 from app.services.product_service import ProductService
 from app.core.enums.responses import ResponseCode
 
-router = APIRouter(prefix="/products", tags=["Products"])
+router = APIRouter(prefix="/products", tags=["products"])
 
 @router.post("/", response_model=ProductSingleResponse)
-async def create_product(product: ProductCreate, db: AsyncSession = Depends(get_db)):
+async def create_product(
+    product: ProductCreate, 
+    db: AsyncSession = Depends(get_db),
+    usuario=Depends(permission_required("crear_producto"))
+    ):
     service = ProductService(db)
 
     try:
@@ -36,7 +41,8 @@ async def create_product(product: ProductCreate, db: AsyncSession = Depends(get_
 @router.post("/paginated", response_model=PaginatedResponse[ProductResponse])
 async def get_products_paginated(
     request: ProductPaginationRequest,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    usuario=Depends(permission_required("ver_productos"))
 ):
     service = ProductService(db)
     try:
@@ -62,7 +68,11 @@ async def get_products_paginated(
 
 
 @router.delete("/delete", response_model=APIResponse[ProductResponse])
-async def delete_product(request: ProductDeleteRequest, db: AsyncSession = Depends(get_db)):
+async def delete_product(
+    request: ProductDeleteRequest, 
+    db: AsyncSession = Depends(get_db),
+    usuario=Depends(permission_required("eliminar_producto"))
+    ):
     """
     Elimina un producto por su nombre.
     """
@@ -86,7 +96,11 @@ async def delete_product(request: ProductDeleteRequest, db: AsyncSession = Depen
         )
         
 @router.put("/update", response_model=ProductSingleResponse)
-async def update_product(request: ProductUpdateRequest, db: AsyncSession = Depends(get_db)):
+async def update_product(
+    request: ProductUpdateRequest, 
+    db: AsyncSession = Depends(get_db),
+    usuario=Depends(permission_required("modificar_producto"))
+):
     """
     Actualiza los datos de un producto buscado por su nombre.
     """

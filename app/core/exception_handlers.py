@@ -7,7 +7,7 @@ from slowapi.errors import RateLimitExceeded
 
 from app.schemas.api_response import APIResponse
 from app.core.enums.responses import ResponseCode
-from app.dependencies.auth import AdminSessionError, UserSessionError  
+from app.dependencies.auth import AdminSessionError, PermissionDeniedError, UserSessionError  
 
 logger = logging.getLogger(__name__)
 
@@ -75,6 +75,16 @@ async def user_session_exception_handler(request: Request, exc: UserSessionError
         ).model_dump()
     )
 
+async def permission_exception_handler(request: Request, exc: PermissionDeniedError):
+    """Maneja errores de permisos."""
+    return JSONResponse(
+        status_code=403,
+        content=APIResponse.from_enum(
+            ResponseCode.FORBIDDEN,
+            detail=exc.detail
+        ).model_dump()
+    )
+
 
 async def value_error_exception_handler(request: Request, exc: ValueError):
     """Maneja ValueError y devuelve un APIResponse estándar."""
@@ -99,3 +109,4 @@ def register_exception_handlers(app: FastAPI):
     app.add_exception_handler(AdminSessionError, admin_session_exception_handler)
     app.add_exception_handler(UserSessionError, user_session_exception_handler)
     app.add_exception_handler(ValueError, value_error_exception_handler)
+    app.add_exception_handler(PermissionDeniedError, permission_exception_handler)
