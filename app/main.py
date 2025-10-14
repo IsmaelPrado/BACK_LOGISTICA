@@ -7,7 +7,6 @@ from app.db.init_db import init_db
 from contextlib import asynccontextmanager
 from app.db.seed_data import seed_roles_and_permissions
 from app.jobs.expirar_sesiones import iniciar_scheduler
-from app.jobs.stock_alert import iniciar_stock_alert_scheduler
 from app.middleware.logging import LoggingMiddleware
 from app.core.limiter import limiter
 from app.core.exception_handlers import register_exception_handlers
@@ -27,8 +26,6 @@ async def lifespan(app: FastAPI):
 
     # Iniciar el scheduler para tareas periódicas
     iniciar_scheduler()
-    iniciar_stock_alert_scheduler()
-    
     yield
     
     
