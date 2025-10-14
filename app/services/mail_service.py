@@ -2,6 +2,7 @@
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType
 from pydantic import EmailStr
 from app.core.config import settings
+from datetime import datetime
 
 conf = ConnectionConfig(
     MAIL_USERNAME=settings.MAIL_USERNAME,
@@ -44,3 +45,24 @@ class MailService:
             subtype=MessageType.html
         )
         await fm.send_message(message, template_name="password_reset_email.html")
+        
+    from datetime import datetime
+
+    async def send_low_stock_alert(self, email: EmailStr, productos: list[dict]):
+        """
+        Envía un correo con todos los productos de stock bajo.
+        """
+        # Agregar fecha y hora actual
+        template_body = {
+            "productos": productos,
+            "now": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+        }
+
+        message = MessageSchema(
+            subject="⚠️ Alerta de stock bajo",
+            recipients=[email],
+            template_body=template_body,
+            subtype=MessageType.html
+        )
+
+        await fm.send_message(message, template_name="low_stock_alert.html")

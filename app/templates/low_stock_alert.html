@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Alerta de Stock Bajo</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 700px;
+      margin: 30px auto;
+      background-color: #ffffff;
+      border-radius: 12px;
+      padding: 25px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      border-top: 6px solid #e74c3c;
+    }
+    h2 {
+      color: #e74c3c;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    p {
+      font-size: 16px;
+      color: #333333;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+    th, td {
+      text-align: left;
+      padding: 10px;
+      border-bottom: 1px solid #dddddd;
+    }
+    th {
+      background-color: #f9f9f9;
+      width: 30%;
+    }
+    td {
+      width: 70%;
+    }
+    .footer {
+      margin-top: 25px;
+      font-size: 13px;
+      color: #777777;
+      text-align: center;
+    }
+    .highlight {
+      color: #e74c3c;
+      font-weight: bold;
+    }
+    .product-row:nth-child(even) td {
+      background-color: #f7f7f7;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>⚠️ Alerta de Stock Bajo</h2>
+    <p>Los siguientes productos tienen un nivel de inventario <span class="highlight">por debajo del mínimo</span> establecido:</p>
+    <table>
+      <tr>
+        <th>Nombre</th>
+        <th>Código</th>
+        <th>Código de barras</th>
+        <th>Precio</th>
+        <th>Inventario</th>
+        <th>Mínimo</th>
+        <th>Categoría</th>
+      </tr>
+      {% for producto in productos %}
+      <tr class="product-row">
+        <td>{{ producto.name }}</td>
+        <td>{{ producto.code }}</td>
+        <td>{{ producto.barcode }}</td>
+        <td>${{ producto.sale_price }}</td>
+        <td class="highlight">{{ producto.inventory }}</td>
+        <td>{{ producto.min_inventory }}</td>
+        <td>{{ producto.category }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    <p>Por favor, considera <span class="highlight">reabastecer estos productos lo antes posible</span>.</p>
+    <div class="footer">
+      Fecha de alerta: {{ now }}
+    </div>
+  </div>
+</body>
+</html>
