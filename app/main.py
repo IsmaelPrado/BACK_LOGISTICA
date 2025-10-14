@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from app.api.v1 import routes_admin_user
+from app.api.v1 import routes_admin_user, routes_sales
 from app.api.v1 import routes_auth
 from app.api.v1 import routes_category
 from app.api.v1 import routes_product
@@ -61,5 +61,6 @@ app.include_router(routes_auth.router)
 app.include_router(routes_admin_user.router)
 app.include_router(routes_category.router)
 app.include_router(routes_product.router)
+app.include_router(routes_sales.router)
 
 

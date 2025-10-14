@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from typing import Optional, List
 from datetime import datetime
 
@@ -36,8 +36,7 @@ class UsuarioCreateResponse(BaseModel):
     permisos: List[str] = []
     fecha_creacion: datetime
 
-    class Config:
-        orm_mode = True
+    model_config =  ConfigDict(from_attributes=True)
 
 # -----------------------------
 # Request para eliminar usuario
@@ -52,15 +51,15 @@ class UsuarioDeleteRequest(BaseModel):
 # -----------------------------
 class UsuarioUpdateRequest(BaseModel):
     nombre_usuario: str = Field(..., description="Nombre actual del usuario a actualizar")
-    nuevo_nombre_usuario: Optional[str] = Field(None, min_length=3, max_length=50)
+    nuevo_nombre_usuario: Optional[str] 
     correo_electronico: Optional[str] = None
     contrasena: Optional[str] 
     rol: Optional[str] = None
     permisos: Optional[List[str]] = []  # Nombres de permisos
 
-    _validar_nombre_usuario = validar_no_vacio("nombre_usuario")
+    _validar_nombre_usuario = validar_no_vacio("nombre_usuario", min_len=3, max_len=50)
     _validar_nuevo_nombre_usuario = validar_no_vacio("nuevo_nombre_usuario", min_len=3, max_len=50)
-    _validar_correo_electronico = validar_no_vacio("correo_electronico")
+    _validar_correo_electronico = validar_no_vacio("correo_electronico", min_len=5, max_len=100)
     _validar_contrasena = validar_no_vacio("contrasena")
     _validar_rol = validar_no_vacio("rol")
 
@@ -80,3 +79,11 @@ class UsuarioUpdateResponse(BaseModel):
 
     class Config:
         orm_mode = True
+
+# -----------------------------
+# Request para obtener usuarios paginados
+# -----------------------------
+class UsuarioPaginationRequest(BaseModel):
+    page: int = 1
+    per_page: int = 10
+    nombre_usuario: Optional[str] = None  # Filtro opcional por nombre de usuario

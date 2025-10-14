@@ -2,6 +2,7 @@ from datetime import datetime
 from sqlalchemy import Column, Integer, String, Text, Numeric, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
 from app.db.database import Base
+from app.models.inventory_movements import InventoryMovement
 
 class Product(Base):
     __tablename__ = "products"
@@ -23,3 +24,6 @@ class Product(Base):
 
     # 🔹 Relación bidireccional con Category
     category = relationship("Category", back_populates="products")
+
+    # 🔹 Relación bidireccional con InventoryMovement
+    inventory_movements = relationship("InventoryMovement", back_populates="product")
