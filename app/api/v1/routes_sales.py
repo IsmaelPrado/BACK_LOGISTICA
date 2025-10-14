@@ -21,10 +21,11 @@ async def create_sale(
     service = SaleService(db, usuario.id_usuario)
     try:
         sale_result = await service.create_sale(sale_request)
+        product_names = ", ".join([p.product_name for p in sale_request.products])
         return APIResponse.from_enum(
             ResponseCode.SUCCESS,
             data=sale_result,
-            detail=f"Venta del producto '{sale_request.product_name}' registrada exitosamente."
+            detail=f"Venta de los productos '{product_names}' registrada exitosamente."
         )
     except ValueError as e:
         return APIResponse.from_enum(
