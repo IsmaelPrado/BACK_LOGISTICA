@@ -134,25 +134,42 @@ class ProductService:
         )
 
     async def delete_product_by_name(self, name: str) -> ProductResponse:
-            """
-            Elimina un producto por su nombre si existe.
-            """
-            name = name.strip()
-            if not name:
-                raise ValueError("El nombre del producto no puede estar vacío.")
+        """
+        Elimina un producto por su nombre si existe.
+        """
+        name = name.strip()
+        if not name:
+            raise ValueError("El nombre del producto no puede estar vacío.")
 
-            result = await self.db.execute(
-                select(Product).filter(Product.name == name)
-            )
-            product = result.scalars().first()
+        result = await self.db.execute(
+            select(Product).filter(Product.name == name)
+        )
+        product = result.scalars().first()
 
-            if not product:
-                raise ValueError(f"No se encontró un producto con nombre '{name}'.")
+        if not product:
+            raise ValueError(f"No se encontró un producto con nombre '{name}'.")
 
-            await self.db.delete(product)
-            await self.db.commit()
+        # Obtener el nombre de la categoría antes de eliminar
+        result = await self.db.execute(select(Category).filter(Category.id == product.id_category))
+        category = result.scalars().first()
+        category_name = category.name if category else "Sin Categoría"
 
-            return ProductResponse.from_orm(product)
+        await self.db.delete(product)
+        await self.db.commit()
+
+        return ProductResponse(
+            id_product=product.id_product,
+            code=product.code,
+            barcode=product.barcode,
+            name=product.name,
+            description=product.description,
+            sale_price=product.sale_price,
+            inventory=product.inventory,
+            min_inventory=product.min_inventory,
+            category=category_name,
+            date_added=product.date_added
+        )
+
         
     async def update_product_by_name(self, update_data: ProductUpdateRequest) -> ProductResponse:
         """
@@ -205,4 +222,20 @@ class ProductService:
             await self.db.rollback()
             raise ValueError(f"No se pudo actualizar el producto (conflicto en la base de datos): {e}")
 
-        return ProductResponse.from_orm(product)
+        # Obtener nombre de categoría explícitamente para evitar MissingGreenlet
+        result = await self.db.execute(select(Category).filter(Category.id == product.id_category))
+        category = result.scalars().first()
+        category_name = category.name if category else "Sin Categoría"
+
+        return ProductResponse(
+            id_product=product.id_product,
+            code=product.code,
+            barcode=product.barcode,
+            name=product.name,
+            description=product.description,
+            sale_price=product.sale_price,
+            inventory=product.inventory,
+            min_inventory=product.min_inventory,
+            category=category_name,
+            date_added=product.date_added
+        )

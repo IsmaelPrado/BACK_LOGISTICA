@@ -28,6 +28,8 @@ async def lifespan(app: FastAPI):
     iniciar_scheduler()
     yield
     
+    
+    
     print("App cerrada")
 
 app = FastAPI(

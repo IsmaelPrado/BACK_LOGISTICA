@@ -73,7 +73,6 @@ class ProductDeleteRequest(BaseValidatedModel):
 class ProductUpdateRequest(BaseValidatedModel):
     current_name: str = Field(..., description="Nombre actual del producto a actualizar")
     new_name: Optional[str] = Field(None, max_length=100, description="Nuevo nombre del producto")
-    code: Optional[str] = Field(None, max_length=50, description="Nuevo código del producto")
     barcode: Optional[str] = Field(None, max_length=100, description="Nuevo código de barras")
     description: Optional[str] = Field(None, description="Nueva descripción del producto")
     sale_price: Optional[float] = Field(None, description="Nuevo precio de venta")
