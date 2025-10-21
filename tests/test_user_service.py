@@ -180,3 +180,105 @@ async def test_create_user_integrity_error(monkeypatch):
 
     with pytest.raises(ValueError, match="correo electrónico ya está registrado"):
         await service.create_user(data)
+
+
+
+# ------------------------
+# Fake DB para update_password
+# ------------------------
+class FakeDBUpdate:
+    def __init__(self):
+        self.added = None
+        self.committed = False
+        self.refreshed = False
+
+    def add(self, obj):
+        self.added = obj
+
+    async def commit(self):
+        self.committed = True
+
+    async def refresh(self, obj):
+        self.refreshed = True
+
+# ------------------------
+# Tests update_password
+# ------------------------
+@pytest.mark.asyncio
+async def test_update_password_success(monkeypatch):
+    """✅ Contraseña válida, actualización correcta"""
+    db = FakeDBUpdate()
+    service = UserService(db)
+    user = Usuario(nombre_usuario="manuel", contrasena="oldpass", correo_electronico="a@b.com", rol="admin")
+
+    # Mock hash_password
+    monkeypatch.setattr("app.services.user_service.hash_password", lambda pwd: "hashed_" + pwd)
+
+    updated_user = await service.update_password(user, "Password123!")
+
+    assert updated_user.contrasena == "hashed_Password123!"
+    assert db.added == user
+    assert db.committed is True
+    assert db.refreshed is True
+
+@pytest.mark.asyncio
+async def test_update_password_missing_special(monkeypatch):
+    """❌ Contraseña sin carácter especial"""
+    db = FakeDBUpdate()
+    service = UserService(db)
+    user = Usuario(nombre_usuario="manuel", contrasena="oldpass", correo_electronico="a@b.com", rol="admin")
+
+    with pytest.raises(ValueError, match="mayúscula, minúscula, número y carácter especial"):
+        await service.update_password(user, "Password123")
+
+@pytest.mark.asyncio
+async def test_update_password_missing_upper(monkeypatch):
+    """❌ Contraseña sin mayúscula"""
+    db = FakeDBUpdate()
+    service = UserService(db)
+    user = Usuario(nombre_usuario="manuel", contrasena="oldpass", correo_electronico="a@b.com", rol="admin")
+
+    with pytest.raises(ValueError, match="mayúscula, minúscula, número y carácter especial"):
+        await service.update_password(user, "password123!")
+
+@pytest.mark.asyncio
+async def test_update_password_missing_lower(monkeypatch):
+    """❌ Contraseña sin minúscula"""
+    db = FakeDBUpdate()
+    service = UserService(db)
+    user = Usuario(nombre_usuario="manuel", contrasena="oldpass", correo_electronico="a@b.com", rol="admin")
+
+    with pytest.raises(ValueError, match="mayúscula, minúscula, número y carácter especial"):
+        await service.update_password(user, "PASSWORD123!")
+
+@pytest.mark.asyncio
+async def test_update_password_missing_digit(monkeypatch):
+    """❌ Contraseña sin número"""
+    db = FakeDBUpdate()
+    service = UserService(db)
+    user = Usuario(nombre_usuario="manuel", contrasena="oldpass", correo_electronico="a@b.com", rol="admin")
+
+    with pytest.raises(ValueError, match="mayúscula, minúscula, número y carácter especial"):
+        await service.update_password(user, "Password!!!")
+
+@pytest.mark.asyncio
+async def test_update_password_empty(monkeypatch):
+    """❌ Contraseña vacía"""
+    db = FakeDBUpdate()
+    service = UserService(db)
+    user = Usuario(nombre_usuario="manuel", contrasena="oldpass", correo_electronico="a@b.com", rol="admin")
+
+    with pytest.raises(ValueError, match="mayúscula, minúscula, número y carácter especial"):
+        await service.update_password(user, "")
+
+@pytest.mark.asyncio
+async def test_update_password_min_length(monkeypatch):
+    """❌ Contraseña demasiado corta"""
+    db = FakeDBUpdate()
+    service = UserService(db)
+    user = Usuario(nombre_usuario="manuel", contrasena="oldpass", correo_electronico="a@b.com", rol="admin")
+
+    # Incluso si cumple patrón, podría agregar otra validación de longitud si el service lo tuviera
+    # Por ahora solo validamos con el patrón
+    with pytest.raises(ValueError, match="mayúscula, minúscula, número y carácter especial"):
+        await service.update_password(user, "P1!")  # demasiado corta
