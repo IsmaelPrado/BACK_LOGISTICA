@@ -5,6 +5,8 @@ from app.core.enums.roles_enum import UserRole
 
 EMAIL_REGEX = re.compile(r"^[^@]+@[^@]+\.[^@]+$")
 
+INVALID_STRINGS = {"string", "null", "none", "", "undefined"}
+
 def validar_correo_electronico():
     @field_validator("correo_electronico")
     def _validador(cls, v: str):
@@ -66,5 +68,17 @@ def validar_rol():
             raise ValueError("El rol solo puede ser 'admin' o 'usuario'.")
         return v
     return _validar_rol
+
+def validate_strings_recursively(data, parent_key=""):
+    if isinstance(data, str):
+        if data.strip().lower() in INVALID_STRINGS:  # <- trim aquí
+            raise ValueError(f"El campo '{parent_key}' contiene un valor inválido: '{data}'")
+    elif isinstance(data, list):
+        for i, item in enumerate(data):
+            validate_strings_recursively(item, f"{parent_key}[{i}]")
+    elif isinstance(data, dict):
+        for key, value in data.items():
+            new_key = f"{parent_key}.{key}" if parent_key else key
+            validate_strings_recursively(value, new_key)
 
 

@@ -2,13 +2,14 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from typing import Optional, List
 from datetime import datetime
 
+from app.schemas.base import BaseValidatedModel
 from app.validators.common_validators import validar_contrasena, validar_correo_electronico, validar_no_vacio, validar_rol
 from app.core.enums.roles_enum import UserRole
 
 # -----------------------------
 # Request para crear usuario
 # -----------------------------
-class UsuarioCreateRequest(BaseModel):
+class UsuarioCreateRequest(BaseValidatedModel):
     nombre_usuario: str 
     correo_electronico: str
     contrasena: str 
@@ -27,7 +28,7 @@ class UsuarioCreateRequest(BaseModel):
     _validar_email = validar_correo_electronico()
 
 
-class UsuarioCreateResponse(BaseModel):
+class UsuarioCreateResponse(BaseValidatedModel):
     id_usuario: int
     nombre_usuario: str
     correo_electronico: str
@@ -41,7 +42,7 @@ class UsuarioCreateResponse(BaseModel):
 # -----------------------------
 # Request para eliminar usuario
 # -----------------------------
-class UsuarioDeleteRequest(BaseModel):
+class UsuarioDeleteRequest(BaseValidatedModel):
     nombre_usuario: str = Field(...)
 
     _validar_nombre_usuario = validar_no_vacio("nombre_usuario", min_len=3, max_len=50)
@@ -49,7 +50,7 @@ class UsuarioDeleteRequest(BaseModel):
 # -----------------------------
 # Request para actualizar usuario
 # -----------------------------
-class UsuarioUpdateRequest(BaseModel):
+class UsuarioUpdateRequest(BaseValidatedModel):
     nombre_usuario: str = Field(..., description="Nombre actual del usuario a actualizar")
     nuevo_nombre_usuario: Optional[str] 
     correo_electronico: Optional[str] = None
@@ -83,7 +84,7 @@ class UsuarioUpdateResponse(BaseModel):
 # -----------------------------
 # Request para obtener usuarios paginados
 # -----------------------------
-class UsuarioPaginationRequest(BaseModel):
+class UsuarioPaginationRequest(BaseValidatedModel):
     page: int = 1
     per_page: int = 10
     nombre_usuario: Optional[str] = None  # Filtro opcional por nombre de usuario

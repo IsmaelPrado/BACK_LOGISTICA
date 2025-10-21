@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.database import get_db
 from app.dependencies.auth import permission_required
-from app.schemas.product import ProductCreate, ProductDeleteRequest, ProductPaginationRequest, ProductResponse, ProductSingleResponse, ProductUpdateRequest
+from app.schemas.product import ProductBase, ProductDeleteRequest, ProductPaginationRequest, ProductResponse, ProductSingleResponse, ProductUpdateRequest
 from app.schemas.api_response import APIResponse, PaginatedResponse
 from app.services.product_service import ProductService
 from app.core.enums.responses import ResponseCode
@@ -11,7 +11,7 @@ router = APIRouter(prefix="/products", tags=["products"])
 
 @router.post("/", response_model=ProductSingleResponse)
 async def create_product(
-    product: ProductCreate, 
+    product: ProductBase, 
     db: AsyncSession = Depends(get_db),
     usuario=Depends(permission_required("crear_producto"))
     ):

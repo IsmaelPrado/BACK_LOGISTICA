@@ -66,6 +66,13 @@ FastAPI genera documentación automáticamente en:
 
 ---
 
+### TESTS
+```
+pytest --cov=app --cov-report=html --html=reports/test_report.html --self-contained-html -v
+```
+
+---
+
 ## 🔧 Configuración de variables de entorno
 
 Crea un archivo `.env` en la raíz del proyecto con tus credenciales y configuraciones sensibles:
