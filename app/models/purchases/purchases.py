@@ -14,3 +14,5 @@ class Purchase(Base):
     supplier_name = Column(String(100), nullable=True)
 
     items = relationship("PurchaseItem", back_populates="purchase", cascade="all, delete-orphan")
+
+

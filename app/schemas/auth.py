@@ -2,6 +2,7 @@ from datetime import datetime
 from pydantic import BaseModel, EmailStr, field_validator, model_validator
 from typing import Annotated, Optional
 from enum import Enum
+from app.schemas.base import BaseValidatedModel
 from app.validators.common_validators import validar_email, validar_correo_electronico, validar_no_vacio, validar_contrasena, validar_rol
 from app.core.enums.roles_enum import UserRole
 
@@ -10,7 +11,7 @@ from app.core.enums.roles_enum import UserRole
 class LoginType(str, Enum):
     email = "email"
     totp = "totp"
-class LoginRequest(BaseModel):
+class LoginRequest(BaseValidatedModel):
     username: Annotated[str, ...]  
     password: Annotated[str, ...]
     login_type: LoginType
@@ -25,10 +26,10 @@ class LoginRequest(BaseModel):
         if tipo not in LoginType._value2member_map_:
             raise ValueError("El tipo de login debe ser 'email' o 'totp'")
         return values
-class LoginResponse(BaseModel):
+class LoginResponse(BaseValidatedModel):
     qr_base64: str | None = None
 
-class OTPRequest(BaseModel):
+class OTPRequest(BaseValidatedModel):
     username: str
     otp: str
 
@@ -36,7 +37,7 @@ class OTPRequest(BaseModel):
     _validar_username = validar_no_vacio("username")
 
 
-class SessionResponse(BaseModel):
+class SessionResponse(BaseValidatedModel):
     session_id: int
     fecha_inicio: datetime
     estado: bool
@@ -46,20 +47,20 @@ class SessionResponse(BaseModel):
     token: str
 
 # Login con Google OAuth
-class GoogleUser(BaseModel):
+class GoogleUser(BaseValidatedModel):
     id: str
     email: EmailStr
     name: str | None = None
     picture: str | None = None
 
-class GoogleAuthResponse(BaseModel):
+class GoogleAuthResponse(BaseValidatedModel):
     access_token: str
     token_type: str = "bearer"
     user: GoogleUser
 
 
 # REGISTRO USUARIO
-class UsuarioRequest(BaseModel):
+class UsuarioRequest(BaseValidatedModel):
     nombre_usuario: Annotated[str, ...]
     correo_electronico: str
     contrasena: Annotated[str, ...]
@@ -83,26 +84,26 @@ class UsuarioRequest(BaseModel):
         return v
 
 
-class UsuarioResponse(BaseModel):
+class UsuarioResponse(BaseValidatedModel):
     id_usuario: int
     nombre_usuario: str
     correo_electronico: EmailStr
     rol: str
 
 # RECUPERAR USUARIO
-class UsernameRecoveryRequest(BaseModel):
+class UsernameRecoveryRequest(BaseValidatedModel):
     email: str
 
     _validar_email = validar_email()
 
 # RECUPERAR CONTRASEÑA
-class PasswordRecoveryRequest(BaseModel):
+class PasswordRecoveryRequest(BaseValidatedModel):
     username: str
 
     _validar_username = validar_no_vacio("username")
 
 
-class PasswordResetRequest(BaseModel):
+class PasswordResetRequest(BaseValidatedModel):
     token: str
     new_password: Annotated[str, ...]
     confirm_new_password: str
