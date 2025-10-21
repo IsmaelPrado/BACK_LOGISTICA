@@ -2,8 +2,9 @@ from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, Field, field_validator, ConfigDict
 from app.schemas.api_response import APIResponse
+from app.schemas.base import BaseValidatedModel
 
-class ProductBase(BaseModel):
+class ProductBase(BaseValidatedModel):
     code: str = Field(..., max_length=50)
     barcode: Optional[str] = Field(None, max_length=100)
     name: str = Field(..., max_length=100)
@@ -40,12 +41,12 @@ class ProductBase(BaseModel):
         return v
 
 
-class ProductCreate(ProductBase):
+class ProductCreate(BaseValidatedModel):
     """Schema para crear un producto — excluye campos automáticos."""
     pass
 
 
-class ProductResponse(BaseModel):
+class ProductResponse(BaseValidatedModel):
     id_product: int
     code: str
     barcode: Optional[str]
@@ -59,17 +60,17 @@ class ProductResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-class ProductPaginationRequest(BaseModel):
+class ProductPaginationRequest(BaseValidatedModel):
     page: int = 1
     per_page: int = 10
     category_name: Optional[str] = None  # filtro por nombre de categoría
     product_name: Optional[str] = None   # búsqueda por palabra clave en nombre de producto
-    
-class ProductDeleteRequest(BaseModel):
+
+class ProductDeleteRequest(BaseValidatedModel):
     """Datos necesarios para eliminar un producto por su nombre."""
     name: str = Field(..., min_length=1, description="Nombre del producto a eliminar")
-    
-class ProductUpdateRequest(BaseModel):
+
+class ProductUpdateRequest(BaseValidatedModel):
     current_name: str = Field(..., description="Nombre actual del producto a actualizar")
     new_name: Optional[str] = Field(None, max_length=100, description="Nuevo nombre del producto")
     code: Optional[str] = Field(None, max_length=50, description="Nuevo código del producto")
