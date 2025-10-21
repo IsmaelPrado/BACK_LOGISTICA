@@ -68,7 +68,7 @@ FastAPI genera documentación automáticamente en:
 
 ### TESTS
 ```
-pytest --cov=app --cov-report=html --html=reports/test_report.html --self-contained-html -v
+PYTHONPATH=$(pwd) pytest --cov=app --cov-report=html --html=reports/test_report.html --self-contained-html -v
 ```
 
 ---
