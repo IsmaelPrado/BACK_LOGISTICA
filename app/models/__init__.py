@@ -5,6 +5,7 @@ from app.db.database import Base
 from app.models.rol import Rol
 from app.models.permiso import Permiso
 from app.models.user import Usuario
+from app.models.historial_acciones import HistorialAccion
 
 # Importar tablas de asociación (no clases)
 from app.models.associations.usuario_permisos import usuario_permisos

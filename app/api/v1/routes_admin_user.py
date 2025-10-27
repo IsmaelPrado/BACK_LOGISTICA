@@ -1,5 +1,4 @@
 import logging
-from typing import List
 from fastapi import APIRouter, Depends, Security
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.database import get_db

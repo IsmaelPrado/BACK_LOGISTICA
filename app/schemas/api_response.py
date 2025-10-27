@@ -11,15 +11,17 @@ class APIResponse(BaseValidatedModel, Generic[T]):
     code: int       # 0 = OK, >0 diferentes tipos de error
     detail: str     # Mensaje detallado del error
     data: Optional[T] = None  # datos opcionales
+    previous_data: Optional[T] = None
 
     @classmethod
-    def from_enum(cls, response_code: ResponseCode, data: Optional[T] = None, detail: Optional[str] = None):
+    def from_enum(cls, response_code: ResponseCode, data: Optional[T] = None, detail: Optional[str] = None, previous_data: Optional[T] = None):
         return cls(
             success=response_code == ResponseCode.SUCCESS,
             code=response_code.code,
             message=response_code.message,
             detail=detail,
-            data=data
+            data=data,
+            previous_data = previous_data
         )
         
 class PaginationData(BaseModel, Generic[T]):
