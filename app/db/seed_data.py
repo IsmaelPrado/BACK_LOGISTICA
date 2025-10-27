@@ -28,6 +28,9 @@ async def seed_roles_and_permissions(db: AsyncSession):
 
         # Permiso de ventas
         {"nombre": "crear_venta", "descripcion": "Puede crear ventas"},
+
+        # Permiso de ver historial de acciones
+        {"nombre": "ver_historial", "descripcion": "Puede ver el historial de acciones de los usuarios"}
     ]
 
     # Insertar roles si no existen
