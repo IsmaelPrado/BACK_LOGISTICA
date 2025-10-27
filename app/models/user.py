@@ -20,3 +20,5 @@ class Usuario(Base):
         back_populates="usuarios"
     )
 
+    ventas = relationship("Sale", back_populates="usuario")
+

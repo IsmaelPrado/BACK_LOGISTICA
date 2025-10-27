@@ -81,4 +81,27 @@ def validate_strings_recursively(data, parent_key=""):
             new_key = f"{parent_key}.{key}" if parent_key else key
             validate_strings_recursively(value, new_key)
 
+def validar_positivo(campo: str):
+    """
+    Valida que un campo numérico sea mayor a 0.
+    Se puede usar para 'quantity', 'price', etc.
+    """
+    @field_validator(campo)
+    def _validador(cls, v):
+        if v <= 0:
+            raise ValueError(f"El campo '{campo}' debe ser mayor a 0")
+        return v
+    return _validador
 
+def validar_lista_minima(campo: str, min_items: int = 1):
+    """
+    Valida que una lista tenga al menos 'min_items' elementos.
+    """
+    @field_validator(campo)
+    def _validador(cls, v):
+        if not isinstance(v, list):
+            raise ValueError(f"El campo '{campo}' debe ser una lista")
+        if len(v) < min_items:
+            raise ValueError(f"El campo '{campo}' debe contener al menos {min_items} elemento(s)")
+        return v
+    return _validador
