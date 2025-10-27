@@ -14,3 +14,6 @@ class Sale(Base):
 
     # Relación con detalles de la venta
     items = relationship("SaleItem", back_populates="sale", cascade="all, delete-orphan")
+
+    # 🔹 Relación con el usuario que hizo la venta
+    usuario = relationship("Usuario", back_populates="ventas")

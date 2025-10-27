@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field, field_validator, ConfigDict
 from app.schemas.api_response import APIResponse
 from app.schemas.base import BaseValidatedModel
 
-class ProductBase(BaseValidatedModel):
+class ProductBase(BaseModel):
     code: str = Field(..., max_length=50)
     barcode: Optional[str] = Field(None, max_length=100)
     name: str = Field(..., max_length=100)
@@ -60,7 +60,7 @@ class ProductResponse(BaseValidatedModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-class ProductPaginationRequest(BaseValidatedModel):
+class ProductPaginationRequest(BaseModel):
     page: int = 1
     per_page: int = 10
     category_name: Optional[str] = None  # filtro por nombre de categoría
