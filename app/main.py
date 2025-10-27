@@ -4,6 +4,7 @@ from app.api.v1 import routes_auth
 from app.api.v1 import routes_category
 from app.api.v1 import routes_product
 from app.api.v1 import routes_historial_acciones
+from app.api.v1 import routes_purchase 
 from app.db.init_db import init_db
 from contextlib import asynccontextmanager
 from app.db.seed_data import seed_roles_and_permissions
@@ -61,5 +62,6 @@ app.include_router(routes_category.router)
 app.include_router(routes_product.router)
 app.include_router(routes_sales.router)
 app.include_router(routes_historial_acciones.router)
+app.include_router(routes_purchase.router)
 
 
