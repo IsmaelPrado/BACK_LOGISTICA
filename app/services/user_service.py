@@ -5,12 +5,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.exc import IntegrityError
 from app.models.password_resets import PasswordReset
+from app.models.sesion import Sesion
 from app.models.user import Usuario
 from app.core.security import hash_password, hash_password_async, verify_password
 from app.schemas.auth import UsuarioRequest
 from pydantic import ValidationError
 import re
 import pyotp
+
+from app.schemas.user import SesionPerfilResponse, UserPerfilResponse
 
 
 class UserService:
@@ -164,5 +167,37 @@ class UserService:
         await self.db.refresh(user)
         return user
     
-    
-        
+    async def obtener_perfil_usuario(self, token: str) -> UserPerfilResponse:
+        """
+        Obtiene la información del usuario y su sesión activa a partir del token de sesión (no JWT).
+        """
+
+        # Buscar sesión activa con el token
+        sesion_result = await self.db.execute(
+            select(Sesion)
+            .where(Sesion.token == token)
+            .where(Sesion.estado == True)
+        )
+        sesion = sesion_result.scalar_one_or_none()
+
+        if not sesion:
+            raise ValueError("Sesión no encontrada o expirada.")
+
+        # Buscar usuario asociado
+        usuario_result = await self.db.execute(
+            select(Usuario).where(Usuario.id_usuario == sesion.id_usuario)
+        )
+        usuario = usuario_result.scalar_one_or_none()
+
+        if not usuario:
+            raise ValueError("Usuario no encontrado para la sesión actual.")
+
+        # Construir respuesta
+        return UserPerfilResponse(
+            id_usuario=usuario.id_usuario,
+            nombre_usuario=usuario.nombre_usuario,
+            correo_electronico=usuario.correo_electronico,
+            rol=usuario.rol,
+            fecha_creacion=usuario.fecha_creacion,
+            sesion_actual=SesionPerfilResponse.from_orm(sesion)
+        )
