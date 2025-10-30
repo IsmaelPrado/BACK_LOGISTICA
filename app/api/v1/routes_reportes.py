@@ -12,7 +12,7 @@ router = APIRouter(prefix="/reportes", tags=["Reportes"])
 async def obtener_reporte_ventas(
     filtros: ReporteVentasRequest,
     db: AsyncSession = Depends(get_db),
-    #usuario=Depends(permission_required("ver_reportes"))
+    usuario=Depends(permission_required("ver_reportes"))
 ):
     """
     📊 Endpoint para generar un reporte de ventas filtrado por usuario, fechas, categorías o productos.

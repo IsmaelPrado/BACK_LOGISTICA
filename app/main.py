@@ -6,9 +6,10 @@ from app.api.v1 import routes_product
 from app.api.v1 import routes_historial_acciones
 from app.api.v1 import routes_reportes
 from app.api.v1 import routes_purchase 
+from app.api.v1 import routes_user
 from app.db.init_db import init_db
 from contextlib import asynccontextmanager
-from app.db.seed_data import seed_roles_and_permissions
+from app.db.seed_data import seed_roles_and_permissions, seed_categories_and_products
 from app.jobs.expirar_sesiones import iniciar_scheduler
 from app.middleware.logging import LoggingMiddleware
 from app.core.limiter import limiter
@@ -26,6 +27,7 @@ async def lifespan(app: FastAPI):
     # Sembrar datos iniciales
     async with async_session() as session:
         await seed_roles_and_permissions(session)
+        await seed_categories_and_products(session)
 
     # Iniciar el scheduler para tareas periódicas
     iniciar_scheduler()
@@ -65,5 +67,7 @@ app.include_router(routes_sales.router)
 app.include_router(routes_historial_acciones.router)
 app.include_router(routes_reportes.router)
 app.include_router(routes_purchase.router)
+app.include_router(routes_user.router)
+
 
 

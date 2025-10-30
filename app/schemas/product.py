@@ -78,7 +78,7 @@ class ProductUpdateRequest(BaseValidatedModel):
     sale_price: Optional[float] = Field(None, description="Nuevo precio de venta")
     inventory: Optional[int] = Field(None, description="Nuevo inventario")
     min_inventory: Optional[int] = Field(None, description="Nuevo inventario mínimo")
-    id_category: Optional[int] = Field(None, description="Nueva categoría del producto")
+    category_name: Optional[str] = Field(None, description="Nueva categoría del producto")
 
 
 class ProductSingleResponse(APIResponse[ProductResponse]):
