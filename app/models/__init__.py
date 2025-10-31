@@ -7,6 +7,7 @@ from app.models.permiso import Permiso
 from app.models.user import Usuario
 from app.models.historial_acciones import HistorialAccion
 from app.models.sales.sales import Sale
+from app.models.inventory_movements import InventoryMovement
 from app.models.sales.sale_items import SaleItem
 from app.models.product import Product
 from app.models.category import Category
@@ -25,5 +26,6 @@ __all__ = [
     "Sale",
     "SaleItem",
     "Product",
-    "Category"
+    "Category",
+    "InventoryMovement",
 ]
