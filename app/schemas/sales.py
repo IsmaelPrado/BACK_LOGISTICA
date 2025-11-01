@@ -1,5 +1,5 @@
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from typing import Optional, List
 
 from app.schemas.base import BaseValidatedModel
@@ -8,16 +8,28 @@ from app.validators.common_validators import validar_lista_minima, validar_posit
 # -----------------------------
 # Request
 # -----------------------------
-class SaleProductRequest(BaseValidatedModel):
-    product_name: str = Field(..., description="Nombre del producto a vender")
+class SaleProductRequest(BaseModel):
+    product_code: Optional[str] = Field(..., description="Código o código de barras del producto a vender")
+    barcode: Optional[str] = None
+
     quantity: int = Field(..., description="Cantidad a vender, debe ser mayor a 0")
-    _validar_quantity = validar_positivo("quantity")
+
+    @model_validator(mode="after")
+    def validar_quantity(self):
+        if self.quantity <= 0:
+            raise ValueError("La cantidad debe ser mayor a 0")
+        return self
+
 
 class SaleCreateRequest(BaseModel):
     products: List[SaleProductRequest] = Field(..., description="Lista de productos a vender")
     customer_name: Optional[str] = Field(None, description="Nombre del cliente (opcional)")
-    _validar_products = validar_lista_minima("products", min_items=1)
 
+    @model_validator(mode="after")
+    def validar_products(self):
+        if not self.products or len(self.products) == 0:
+            raise ValueError("Debe incluir al menos un producto en la venta")
+        return self
 
 # -----------------------------
 # Response
