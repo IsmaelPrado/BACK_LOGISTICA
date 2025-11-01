@@ -26,7 +26,10 @@ async def create_sale(
         sale_result = await service.create_sale(sale_request)
 
         # programar envío de correo en background
-        product_names = ", ".join([p.product_name for p in sale_request.products])
+        product_names = ", ".join([
+            p.barcode or p.product_code or "desconocido"
+            for p in sale_request.products
+        ])
         return APIResponse.from_enum(
             ResponseCode.SUCCESS,
             data=sale_result,

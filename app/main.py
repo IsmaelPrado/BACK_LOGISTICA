@@ -27,7 +27,7 @@ async def lifespan(app: FastAPI):
     # Sembrar datos iniciales
     async with async_session() as session:
         await seed_roles_and_permissions(session)
-        await seed_categories_and_products(session)
+        #await seed_categories_and_products(session)
 
     # Iniciar el scheduler para tareas periódicas
     iniciar_scheduler()
