@@ -1,4 +1,5 @@
 from datetime import datetime
+import random
 import pyotp
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -8,6 +9,7 @@ from app.models.rol import Rol
 from app.models.permiso import Permiso
 from app.core.security import hash_password
 from app.models.user import Usuario
+from faker import Faker
 
 async def seed_roles_and_permissions(db: AsyncSession):
     # Roles base
@@ -76,98 +78,49 @@ async def seed_roles_and_permissions(db: AsyncSession):
         db.add(nuevo_admin)
         await db.commit()
 
-async def seed_categories_and_products(db: AsyncSession):
-    # 🔹 Categorías base
-    categorias_data = [
-        {"name": "Papelería"},
-        {"name": "Electrónica"},
-        {"name": "Librería"},
-        {"name": "Muebles"},
-    ]
+fake = Faker()
 
-    categorias_dict = {}  # Guardaremos objetos Category para relacionarlos con productos
-
-    # Insertar categorías si no existen
-    for cat_info in categorias_data:
-        result = await db.execute(select(Category).filter_by(name=cat_info["name"]))
+async def seed_categories_and_products(db: AsyncSession, num_categories=25, num_products=250):
+    # 🔹 Generar categorías aleatorias
+    categorias_dict = {}
+    for i in range(num_categories):
+        name = f"{fake.word().capitalize()} {i+1}"  # Evita duplicados
+        # Verificar si ya existe
+        result = await db.execute(select(Category).filter_by(name=name))
         categoria = result.scalar_one_or_none()
         if not categoria:
-            categoria = Category(**cat_info)
+            categoria = Category(name=name)
             db.add(categoria)
-            await db.flush()  # Necesario para obtener id antes del commit
-        categorias_dict[cat_info["name"]] = categoria
+            await db.flush()
+        categorias_dict[name] = categoria
 
-    # 🔹 Productos base
-    productos_data = [
-        {
-            "code": "P001",
-            "barcode": "1234567890123",
-            "name": "Lápiz HB",
-            "description": "Lápiz para escribir y dibujar",
-            "sale_price": 5.00,
-            "inventory": 120,
-            "min_inventory": 20,
-            "category_name": "Papelería"
-        },
-        {
-            "code": "P002",
-            "barcode": "1234567890124",
-            "name": "Cuaderno Profesional",
-            "description": "Cuaderno tamaño carta, hojas rayadas",
-            "sale_price": 35.00,
-            "inventory": 60,
-            "min_inventory": 10,
-            "category_name": "Papelería"
-        },
-        {
-            "code": "P003",
-            "barcode": "1234567890125",
-            "name": "Marcador Azul",
-            "description": "Marcador para pizarras blancas",
-            "sale_price": 12.00,
-            "inventory": 80,
-            "min_inventory": 15,
-            "category_name": "Papelería"
-        },
-        {
-            "code": "P004",
-            "barcode": "1234567890126",
-            "name": "Mouse Inalámbrico",
-            "description": "Mouse inalámbrico USB",
-            "sale_price": 150.00,
-            "inventory": 50,
-            "min_inventory": 5,
-            "category_name": "Electrónica"
-        },
-        {
-            "code": "P005",
-            "barcode": "1234567890127",
-            "name": "Silla Oficina",
-            "description": "Silla ergonómica para oficina",
-            "sale_price": 1200.00,
-            "inventory": 20,
-            "min_inventory": 2,
-            "category_name": "Muebles"
-        },
-    ]
+    # 🔹 Generar productos aleatorios
+    used_codes = set()
+    for i in range(num_products):
+        # Generar código único
+        while True:
+            code = f"P{random.randint(1000, 9999)}"
+            if code not in used_codes:
+                used_codes.add(code)
+                break
 
-    # Insertar productos si no existen
-    for prod_info in productos_data:
-        result = await db.execute(select(Product).filter_by(code=prod_info["code"]))
-        producto = result.scalar_one_or_none()
-        if not producto:
-            categoria = categorias_dict[prod_info["category_name"]]
-            producto = Product(
-                code=prod_info["code"],
-                barcode=prod_info["barcode"],
-                name=prod_info["name"],
-                description=prod_info["description"],
-                sale_price=prod_info["sale_price"],
-                inventory=prod_info["inventory"],
-                min_inventory=prod_info["min_inventory"],
-                category=categoria,
-                date_added=datetime.utcnow()
-            )
-            db.add(producto)
+        # Elegir categoría aleatoria
+        category_name = random.choice(list(categorias_dict.keys()))
+        categoria = categorias_dict[category_name]
+
+        # Generar datos del producto
+        producto = Product(
+            code=code,
+            barcode=fake.ean13(),
+            name=fake.word().capitalize() + f" {i+1}",
+            description=fake.sentence(nb_words=6),
+            sale_price=round(random.uniform(5.0, 2000.0), 2),
+            inventory=random.randint(5, 200),
+            min_inventory=random.randint(1, 20),
+            category=categoria,
+            date_added=datetime.utcnow()
+        )
+
+        db.add(producto)
 
     await db.commit()

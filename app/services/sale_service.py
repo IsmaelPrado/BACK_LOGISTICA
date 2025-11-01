@@ -1,5 +1,6 @@
 import asyncio
 from datetime import datetime
+from sqlalchemy import or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from app.models.product import Product
@@ -36,10 +37,19 @@ class SaleService:
         await self.db.flush()  # Para obtener el ID antes del commit
 
         for item in sale_request.products:
-            result = await self.db.execute(select(Product).where(Product.name == item.product_name).options(selectinload(Product.category)))
+            query = select(Product).options(selectinload(Product.category))
+            query = query.where(
+                or_(
+                    Product.barcode == item.barcode,
+                    Product.code == item.product_code
+                )
+            )
+            
+            result = await self.db.execute(query)
             product: Product = result.scalar_one_or_none()
             if not product:
-                raise ValueError(f"Producto '{item.product_name}' no encontrado")
+                raise ValueError(f"Producto con código '{item.product_code or item.barcode}' no encontrado.")
+
 
             if item.quantity > product.inventory:
                 raise ValueError(f"Cantidad solicitada ({item.quantity}) mayor al stock disponible ({product.inventory})")
