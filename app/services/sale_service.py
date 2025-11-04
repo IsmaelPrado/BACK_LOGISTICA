@@ -29,7 +29,7 @@ class SaleService:
         # 1️⃣ Crear la venta
         sale = Sale(
             id_user=self.user_id,
-            date=datetime.utcnow(),
+            date=datetime.now(),
             total=0,
             customer_name=sale_request.customer_name
         )
@@ -80,7 +80,7 @@ class SaleService:
                 previous_inventory=previous_inventory,
                 new_inventory=new_inventory,
                 user_id=self.user_id,
-                date=datetime.utcnow()
+                date=datetime.now()
             )
             self.db.add(movement)
 
