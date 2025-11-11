@@ -6,8 +6,10 @@ from typing import AsyncGenerator
 # Usamos la URL desde .env
 DATABASE_URL = settings.DATABASE_URL
 
+ssl_args = {"ssl": True}
+
 # Crear motor asíncrono
-engine = create_async_engine(DATABASE_URL, echo=True, future=True, pool_size=50, max_overflow=50)
+engine = create_async_engine(DATABASE_URL, echo=True, future=True, connect_args=ssl_args, pool_size=50, max_overflow=50)
 
 # Crear session local
 async_session = sessionmaker(
