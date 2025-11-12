@@ -8,6 +8,7 @@ from app.models.sales.sales import Sale
 from app.models.sales.sale_items import SaleItem
 from app.models.inventory_movements import InventoryMovement
 from app.core.enums.tipo_movimiento import MovementType
+from app.models.user import Usuario
 from app.schemas.sales import SaleCreateRequest, SaleCreateResponse, SaleProductResponse
 from app.services.mail_service import MailService  # <- tus schemas
 from sqlalchemy.orm import selectinload
@@ -115,12 +116,19 @@ class SaleService:
 
         # 🔹 Enviar correo asíncrono en background (sin bloquear ni tocar la sesión)
         if productos_bajo_minimo:
-            asyncio.create_task(
-                MailService().send_stock_alert_email(
-                    email="vansestilo200@gmail.com",
-                    productos=productos_bajo_minimo
+            # Obtener correos de usuarios admin
+            query_admins = select(Usuario.correo_electronico).where(Usuario.rol == "admin")
+            result = await self.db.execute(query_admins)
+            admin_emails = [row[0] for row in result.fetchall()]
+
+            if admin_emails:  # solo si hay admins
+                asyncio.create_task(
+                    MailService().send_stock_alert_email(
+                        email=admin_emails,  # ahora es lista de correos
+                        productos=productos_bajo_minimo
+                    )
                 )
-            )
+
 
         # 10️⃣ Retornar response
         return SaleCreateResponse(
