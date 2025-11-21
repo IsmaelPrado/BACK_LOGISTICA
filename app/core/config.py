@@ -32,6 +32,8 @@ class Settings(BaseSettings):
     GOOGLE_GEO_URL: str
     GOOGLE_GEO_API_KEY: str
 
+    SENDGRID_API_KEY: str
+
     class Config:
         env_file = ".env"   # indica de dónde leer variables
 

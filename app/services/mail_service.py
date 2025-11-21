@@ -1,75 +1,66 @@
 # app/services/mail_service.py
 from datetime import datetime
-from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType
-from pydantic import EmailStr
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail
+from fastapi import BackgroundTasks
 from app.core.config import settings
+from jinja2 import Environment, FileSystemLoader, select_autoescape
+import os
 
-conf = ConnectionConfig(
-    MAIL_USERNAME=settings.MAIL_USERNAME,
-    MAIL_PASSWORD=settings.MAIL_PASSWORD,
-    MAIL_FROM=settings.MAIL_FROM,
-    MAIL_PORT=settings.MAIL_PORT,
-    MAIL_SERVER=settings.MAIL_SERVER,
-    MAIL_STARTTLS=settings.MAIL_STARTTLS,
-    MAIL_SSL_TLS=settings.MAIL_SSL_TLS,
-    USE_CREDENTIALS=True,
-    TEMPLATE_FOLDER='./app/templates'
+# Configura la carpeta donde están tus plantillas HTML
+templates_env = Environment(
+    loader=FileSystemLoader("./app/templates"),
+    autoescape=select_autoescape(["html", "xml"])
 )
 
-fm = FastMail(conf)
-
 class MailService:
-    async def send_otp_email(self, email: EmailStr, otp: str, nombre_usuario: str):
-        message = MessageSchema(
-            subject="Tu código de verificación",
-            recipients=[email],
-            template_body={"nombre_usuario": nombre_usuario, "otp": otp},
-            subtype=MessageType.html
-        )
-        await fm.send_message(message, template_name="otp_email.html")
+    def __init__(self):
+        self.sg = SendGridAPIClient(settings.SENDGRID_API_KEY)
+        self.from_email = settings.MAIL_FROM
 
-    async def send_username_recovery_email(self, email: EmailStr, username: str):
-        message = MessageSchema(
-            subject="Recuperación de nombre de usuario",
-            recipients=[email],
-            template_body={"nombre_usuario": username},
-            subtype=MessageType.html
-        )
-        await fm.send_message(message, template_name="username_recovery_email.html")
+    def _render_template(self, template_name: str, context: dict) -> str:
+        """Renderiza el HTML usando Jinja2."""
+        template = templates_env.get_template(template_name)
+        return template.render(context)
 
-    async def send_password_reset_email(self, email: EmailStr, reset_link: str):
-        message = MessageSchema(
-            subject="Restablecimiento de contraseña",
-            recipients=[email],
-            template_body={"reset_link": reset_link},
-            subtype=MessageType.html
+    async def _send_email(self, to_email: str, subject: str, html_content: str):
+        """Envía el correo usando SendGrid."""
+        message = Mail(
+            from_email=self.from_email,
+            to_emails=to_email,
+            subject=subject,
+            html_content=html_content
         )
-        await fm.send_message(message, template_name="password_reset_email.html")
 
-    async def send_stock_alert_email(self, email: EmailStr, productos: list):
-        """
-        Envía un correo de alerta de stock bajo con la lista de productos.
-        
-        Args:
-            email (EmailStr): Correo del destinatario.
-            productos (list): Lista de productos, cada uno con:
-                - name
-                - code
-                - barcode
-                - sale_price
-                - inventory
-                - min_inventory
-                - category
-        """
+        try:
+            response = self.sg.send(message)
+            print(f"[SendGrid] Correo enviado a {to_email}. Código: {response.status_code}")
+        except Exception as e:
+            print(f"[SendGrid] Error al enviar correo: {e}")
+
+    async def send_otp_email(self, email: str, otp: str, nombre_usuario: str):
+        html_content = self._render_template("otp_email.html", {
+            "nombre_usuario": nombre_usuario,
+            "otp": otp
+        })
+        await self._send_email(email, "Tu código de verificación", html_content)
+
+    async def send_username_recovery_email(self, email: str, username: str):
+        html_content = self._render_template("username_recovery_email.html", {
+            "nombre_usuario": username
+        })
+        await self._send_email(email, "Recuperación de nombre de usuario", html_content)
+
+    async def send_password_reset_email(self, email: str, reset_link: str):
+        html_content = self._render_template("password_reset_email.html", {
+            "reset_link": reset_link
+        })
+        await self._send_email(email, "Restablecimiento de contraseña", html_content)
+
+    async def send_stock_alert_email(self, email: str, productos: list):
         now = datetime.utcnow().strftime("%d/%m/%Y %H:%M")
-        message = MessageSchema(
-            subject="⚠️ Alerta de Stock Bajo",
-            recipients=[email],
-            template_body={
-                "productos": productos,
-                "now": now
-            },
-            subtype=MessageType.html
-        )
-        # Envía el mensaje usando tu instancia de FastAPI-Mail
-        await fm.send_message(message, template_name="low_stock_alert.html")
+        html_content = self._render_template("low_stock_alert.html", {
+            "productos": productos,
+            "now": now
+        })
+        await self._send_email(email, "⚠️ Alerta de Stock Bajo", html_content)
