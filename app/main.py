@@ -15,6 +15,7 @@ from app.core.limiter import limiter
 from app.core.exception_handlers import register_exception_handlers
 from app.middleware.security import basic_auth_middleware 
 from app.db.database import async_session
+from fastapi.middleware.cors import CORSMiddleware
 
 
 
@@ -42,10 +43,19 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],       # ⬅ permitir cualquier frontend
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.middleware("http")(basic_auth_middleware)
 
 # Confirguración de logs
 app.add_middleware(LoggingMiddleware)
+
 
 # Configuración de limitador de velocidad
 app.state.limiter = limiter

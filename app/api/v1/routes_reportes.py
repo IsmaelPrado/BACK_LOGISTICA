@@ -6,7 +6,7 @@ from app.services.reporte_ventas_service import generar_reporte_ventas
 from app.schemas.api_response import APIResponse, ResponseCode
 from app.dependencies.auth import permission_required
 
-router = APIRouter(prefix="/reportes", tags=["Reportes"])
+router = APIRouter(prefix="/reports", tags=["reports"])
 
 @router.post("/ventas", response_model=APIResponse[ReporteVentasResponse])
 async def obtener_reporte_ventas(

@@ -7,7 +7,7 @@ from app.schemas.historial_acciones import HistorialAccionQuery
 from app.services.historial_acciones_service import HistorialService
 from app.core.enums.responses import ResponseCode
 
-router = APIRouter(prefix="/historial", tags=["historial"])
+router = APIRouter(prefix="/history", tags=["history"])
 
 @router.post("/", status_code=status.HTTP_200_OK)
 async def obtener_historial(
