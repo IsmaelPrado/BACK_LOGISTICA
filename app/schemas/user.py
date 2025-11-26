@@ -107,7 +107,7 @@ class UsuarioUpdateResponse(BaseModel):
 # -----------------------------
 # Request para obtener usuarios paginados
 # -----------------------------
-class UsuarioPaginationRequest(BaseValidatedModel):
+class UsuarioPaginationRequest(BaseModel):
     page: int = 1
     per_page: int = 10
     nombre_usuario: Optional[str] = None  # Filtro opcional por nombre de usuario

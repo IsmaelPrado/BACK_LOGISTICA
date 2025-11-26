@@ -8,6 +8,7 @@ from app.api.v1 import routes_reportes
 from app.api.v1 import routes_purchase 
 from app.api.v1 import routes_user
 from app.api.v1 import routes_ticket_config
+from app.api.v1 import routes_permiso
 from app.db.init_db import init_db
 from contextlib import asynccontextmanager
 from app.db.seed_data import seed_roles_and_permissions, seed_categories_and_products
@@ -72,6 +73,7 @@ def root():
 
 app.include_router(routes_auth.router)
 app.include_router(routes_admin_user.router)
+app.include_router(routes_permiso.router)
 app.include_router(routes_category.router)
 app.include_router(routes_product.router)
 app.include_router(routes_sales.router)
@@ -80,6 +82,7 @@ app.include_router(routes_reportes.router)
 app.include_router(routes_purchase.router)
 app.include_router(routes_user.router)
 app.include_router(routes_ticket_config.router)
+
 
 
 

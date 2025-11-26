@@ -58,6 +58,7 @@ async def user_session_required(
     token: str = Security(api_key_header),
     db: AsyncSession = Depends(get_db)
 ):
+    print("TOKEN: ", token )
     if not token:
         raise UserSessionError("Token no proporcionado")
     
