@@ -1,5 +1,6 @@
 import asyncio
 from datetime import datetime
+from sqlalchemy import or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from app.models.product import Product
@@ -7,6 +8,7 @@ from app.models.sales.sales import Sale
 from app.models.sales.sale_items import SaleItem
 from app.models.inventory_movements import InventoryMovement
 from app.core.enums.tipo_movimiento import MovementType
+from app.models.user import Usuario
 from app.schemas.sales import SaleCreateRequest, SaleCreateResponse, SaleProductResponse
 from app.services.mail_service import MailService  # <- tus schemas
 from sqlalchemy.orm import selectinload
@@ -28,7 +30,7 @@ class SaleService:
         # 1️⃣ Crear la venta
         sale = Sale(
             id_user=self.user_id,
-            date=datetime.utcnow(),
+            date=datetime.now(),
             total=0,
             customer_name=sale_request.customer_name
         )
@@ -36,10 +38,19 @@ class SaleService:
         await self.db.flush()  # Para obtener el ID antes del commit
 
         for item in sale_request.products:
-            result = await self.db.execute(select(Product).where(Product.name == item.product_name).options(selectinload(Product.category)))
+            query = select(Product).options(selectinload(Product.category))
+            query = query.where(
+                or_(
+                    Product.barcode == item.barcode,
+                    Product.code == item.product_code
+                )
+            )
+            
+            result = await self.db.execute(query)
             product: Product = result.scalar_one_or_none()
             if not product:
-                raise ValueError(f"Producto '{item.product_name}' no encontrado")
+                raise ValueError(f"Producto con código '{item.product_code or item.barcode}' no encontrado.")
+
 
             if item.quantity > product.inventory:
                 raise ValueError(f"Cantidad solicitada ({item.quantity}) mayor al stock disponible ({product.inventory})")
@@ -70,7 +81,7 @@ class SaleService:
                 previous_inventory=previous_inventory,
                 new_inventory=new_inventory,
                 user_id=self.user_id,
-                date=datetime.utcnow()
+                date=datetime.now()
             )
             self.db.add(movement)
 
@@ -105,12 +116,19 @@ class SaleService:
 
         # 🔹 Enviar correo asíncrono en background (sin bloquear ni tocar la sesión)
         if productos_bajo_minimo:
-            asyncio.create_task(
-                MailService().send_stock_alert_email(
-                    email="vansestilo200@gmail.com",
-                    productos=productos_bajo_minimo
+            # Obtener correos de usuarios admin
+            query_admins = select(Usuario.correo_electronico).where(Usuario.rol == "admin")
+            result = await self.db.execute(query_admins)
+            admin_emails = [row[0] for row in result.fetchall()]
+
+            if admin_emails:  # solo si hay admins
+                asyncio.create_task(
+                    MailService().send_stock_alert_email(
+                        email=admin_emails,  # ahora es lista de correos
+                        productos=productos_bajo_minimo
+                    )
                 )
-            )
+
 
         # 10️⃣ Retornar response
         return SaleCreateResponse(

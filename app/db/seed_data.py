@@ -1,10 +1,15 @@
+from datetime import datetime
+import random
 import pyotp
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from app.models.category import Category
+from app.models.product import Product
 from app.models.rol import Rol
 from app.models.permiso import Permiso
 from app.core.security import hash_password
 from app.models.user import Usuario
+from faker import Faker
 
 async def seed_roles_and_permissions(db: AsyncSession):
     # Roles base
@@ -28,14 +33,18 @@ async def seed_roles_and_permissions(db: AsyncSession):
 
         # Permiso de ventas
         {"nombre": "crear_venta", "descripcion": "Puede crear ventas"},
+        {"nombre": "ver_reportes", "descripcion": "Puede ver un reporte de ventas"},
 
         # Permiso de ver historial de acciones
         {"nombre": "ver_historial", "descripcion": "Puede ver el historial de acciones de los usuarios"},
 
+
         # Permisos de compras
-        {"nombre": "crear_compra", "descripcion": "Puede crear compras"}
+        {"nombre": "crear_compra", "descripcion": "Puede crear compras"},
 
         # Permiso para reportes
+        {"nombre": "ver_perfil", "descripcion": "Puede ver su perfil de usuario con el token"}
+
     ]
 
     # Insertar roles si no existen
@@ -73,3 +82,50 @@ async def seed_roles_and_permissions(db: AsyncSession):
         )
         db.add(nuevo_admin)
         await db.commit()
+
+fake = Faker()
+
+async def seed_categories_and_products(db: AsyncSession, num_categories=25, num_products=250):
+    # 🔹 Generar categorías aleatorias
+    categorias_dict = {}
+    for i in range(num_categories):
+        name = f"{fake.word().capitalize()} {i+1}"  # Evita duplicados
+        # Verificar si ya existe
+        result = await db.execute(select(Category).filter_by(name=name))
+        categoria = result.scalar_one_or_none()
+        if not categoria:
+            categoria = Category(name=name)
+            db.add(categoria)
+            await db.flush()
+        categorias_dict[name] = categoria
+
+    # 🔹 Generar productos aleatorios
+    used_codes = set()
+    for i in range(num_products):
+        # Generar código único
+        while True:
+            code = f"P{random.randint(1000, 9999)}"
+            if code not in used_codes:
+                used_codes.add(code)
+                break
+
+        # Elegir categoría aleatoria
+        category_name = random.choice(list(categorias_dict.keys()))
+        categoria = categorias_dict[category_name]
+
+        # Generar datos del producto
+        producto = Product(
+            code=code,
+            barcode=fake.ean13(),
+            name=fake.word().capitalize() + f" {i+1}",
+            description=fake.sentence(nb_words=6),
+            sale_price=round(random.uniform(5.0, 2000.0), 2),
+            inventory=random.randint(5, 200),
+            min_inventory=random.randint(1, 20),
+            category=categoria,
+            date_added=datetime.utcnow()
+        )
+
+        db.add(producto)
+
+    await db.commit()

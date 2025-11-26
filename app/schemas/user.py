@@ -1,10 +1,33 @@
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from app.schemas.base import BaseValidatedModel
 from app.validators.common_validators import validar_contrasena, validar_correo_electronico, validar_no_vacio, validar_rol
 from app.core.enums.roles_enum import UserRole
+
+class SesionPerfilResponse(BaseModel):
+    id: int
+    fecha_inicio: datetime
+    ultima_actividad: datetime
+    expiracion_inactividad: timedelta
+    estado: bool
+    latitud: Optional[float] = None
+    longitud: Optional[float] = None
+
+    class Config:
+        from_attributes = True
+        
+class UserPerfilResponse(BaseModel):
+    id_usuario: int
+    nombre_usuario: str
+    correo_electronico: EmailStr
+    rol: str
+    fecha_creacion: datetime
+    sesion_actual: Optional[SesionPerfilResponse] = None
+
+    class Config:
+        orm_mode = True
 
 # -----------------------------
 # Request para crear usuario

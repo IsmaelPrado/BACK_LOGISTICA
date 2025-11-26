@@ -105,3 +105,28 @@ def validar_lista_minima(campo: str, min_items: int = 1):
             raise ValueError(f"El campo '{campo}' debe contener al menos {min_items} elemento(s)")
         return v
     return _validador
+
+def validar_tipo_inventario():
+    @field_validator("tipo_inventario", mode="before")
+    def _validador(cls, v):
+        valores_validos = {"bajo", "bueno", "todos"}
+        if isinstance(v, str):
+            v = v.lower()
+            if v not in valores_validos:
+                raise ValueError("El campo 'tipo_inventario' debe ser 'bajo', 'bueno' o 'todos'.")
+        return v
+    return _validador
+
+def traducir_error_lista(campo: str):
+    """
+    Traduce el error por defecto de Pydantic cuando un campo no es una lista válida.
+    Si el valor no es lista ni None, lanza un mensaje en español.
+    """
+    @field_validator(campo, mode="before")
+    def _validador(cls, v):
+        if v is None:
+            return v
+        if not isinstance(v, list):
+            raise ValueError(f"El campo '{campo}' debe ser una lista válida (por ejemplo: ['item1', 'item2']).")
+        return v
+    return _validador

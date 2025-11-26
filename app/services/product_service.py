@@ -173,10 +173,6 @@ class ProductService:
 
         
     async def update_product_by_name(self, update_data: ProductUpdateRequest) -> ProductResponse:
-        """
-        Actualiza un producto buscado por su nombre.
-        Solo actualiza los campos que vienen con valor en la request.
-        """
         current_name = update_data.current_name.strip()
         if not current_name:
             raise ValueError("El nombre actual del producto no puede estar vacío.")
@@ -205,11 +201,20 @@ class ProductService:
         if not update_fields:
             raise ValueError("No se proporcionaron datos válidos para actualizar el producto.")
 
+        # Mapear category_name a id_category si se proporciona
+        if "category_name" in update_fields:
+            category_name = update_fields.pop("category_name").strip()
+            if category_name:
+                result = await self.db.execute(select(Category).filter(Category.name == category_name))
+                category = result.scalars().first()
+                if not category:
+                    raise ValueError(f"No se encontró la categoría '{category_name}'.")
+                update_fields["id_category"] = category.id
+
         # Actualizar campos dinámicamente
         for field, value in update_fields.items():
             if isinstance(value, str):
                 value = value.strip()
-            # Mapear new_name a name
             if field == "new_name":
                 setattr(product, "name", value)
             else:
@@ -223,7 +228,7 @@ class ProductService:
             await self.db.rollback()
             raise ValueError(f"No se pudo actualizar el producto (conflicto en la base de datos): {e}")
 
-        # Obtener nombre de categoría explícitamente para evitar MissingGreenlet
+        # Obtener nombre de categoría explícitamente
         result = await self.db.execute(select(Category).filter(Category.id == product.id_category))
         category = result.scalars().first()
         category_name = category.name if category else "Sin Categoría"
