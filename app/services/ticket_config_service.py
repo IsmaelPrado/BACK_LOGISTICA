@@ -94,9 +94,9 @@ class TicketConfigService:
         return {
             "ShopName": "PAPELERÍA CENTRAL",
             "show_shop_name": True,
-            "address": "",
+            "address": "Nezahuálcoyotl #102",
             "show_address": True,
-            "phone": "",
+            "phone": "428 103 1492",
             "show_phone": True,
             "show_attendant": True,
             "attendant_label": "Le ha atendido:",

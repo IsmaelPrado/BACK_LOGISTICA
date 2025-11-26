@@ -7,6 +7,7 @@ from app.dependencies.auth import permission_required
 from app.schemas.api_response import APIResponse
 import json
 import base64
+from fastapi import Request
 
 from app.core.enums.responses import ResponseCode
 
@@ -19,8 +20,12 @@ router = APIRouter(prefix="/me/ticket-config", tags=["TicketConfig"])
 @router.get("/", status_code=status.HTTP_200_OK)
 async def get_my_ticket_config(
     db: AsyncSession = Depends(get_db),
-    current_user = Depends(permission_required("config_ticket"))
+    current_user = Depends(permission_required("config_ticket")),
+    request: Request = None
 ):
+    print("=== HEADERS RECIBIDOS EN ESTE ENDPOINT ===")
+    print(dict(request.headers))
+    print("==========================================")
     service = TicketConfigService(db)
 
     try:
